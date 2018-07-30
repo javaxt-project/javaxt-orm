@@ -1,0 +1,125 @@
+package ${package};
+import javaxt.json.*;
+import javaxt.utils.Date;
+import javaxt.sql.Connection;
+import java.sql.SQLException;
+
+//******************************************************************************
+//**  ${modelName} Class
+//******************************************************************************
+/**
+ *   Used to represent a ${modelName}
+ *
+ ******************************************************************************/
+public class ${modelName} {
+    
+    private Long id;
+    ${privateFields}
+    
+
+    
+  //**************************************************************************
+  //** Constructor
+  //**************************************************************************
+  /** Creates a new instance of this class using an ID and a connection to
+   *  the database.
+   */
+    public ${modelName}(long id, Connection conn) throws SQLException {
+        javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
+        rs.open("select * from ${tableName} where id=" + id, conn);
+        if (rs.EOF){
+            rs.close();
+            throw new SQLException("${modelName} not found.");
+        }
+        
+        this.id = rs.getValue("id").toLong();
+        ${getValues}
+        rs.close();
+    }
+    
+    
+  //**************************************************************************
+  //** Constructor
+  //**************************************************************************
+  /** Creates a new instance of this class using a JSON representation of a
+   *  ${modelName}.
+   */
+    public ${modelName}(JSONObject json){
+        update(json);
+    }
+    
+    
+  //**************************************************************************
+  //** update
+  //**************************************************************************
+  /** Used to update attributes with attributes from another ${modelName}.
+   */
+    public void update(JSONObject json){
+            
+        Long id = json.get("id").toLong();
+        if (id!=null && id>0) this.id = id;
+        ${getJson}
+    }
+    
+    
+    public Long getID(){
+        return id;
+    }
+
+    public void setID(long id){
+        this.id = id;
+    }
+    
+    ${publicMembers}
+    
+    
+  //**************************************************************************
+  //** save
+  //**************************************************************************
+  /** Used to save a ${modelName} in the database.
+   */
+    public void save(Connection conn) throws SQLException {
+    
+      //Add/Update record in the ${tableName} table
+        javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
+        String sql = "select * from ${tableName}";
+        if (id!=null) sql+= " where id=" + id;
+    
+        
+        rs.open(sql, conn, false);
+        if (id==null) rs.addNew();
+        
+        ${setValues}
+        
+        rs.update();
+        rs.close();
+
+        if (id==null) id = rs.getGeneratedKey().toLong();
+    }
+    
+    
+    
+  //**************************************************************************
+  //** delete
+  //**************************************************************************
+  /** Used to delete a ${modelName} from the database.
+   */
+    public void delete(Connection conn) throws SQLException {
+        if (id==null) return;
+        else conn.execute("delete from ${tableName} where id=" + id);
+    }
+
+    
+    
+  //**************************************************************************
+  //** toJson
+  //**************************************************************************
+  /** Returns a string representation of the ${modelName} in JSON notation.
+   */
+    public JSONObject toJson(){
+        JSONObject json = new JSONObject();
+        if (id!=null) json.set("id", id);
+        ${toJson}
+        return json;
+    }
+}
