@@ -84,7 +84,6 @@ public class ${modelName} {
         javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
         String sql = "select * from ${tableName}";
         if (id!=null) sql+= " where id=" + id;
-    
         
         rs.open(sql, conn, false);
         if (id==null) rs.addNew();
@@ -92,9 +91,15 @@ public class ${modelName} {
         ${setValues}
         
         rs.update();
-        rs.close();
-
+        
+        
+      //Update local variables
         if (id==null) id = rs.getGeneratedKey().toLong();
+        ${getLastModified}
+        
+        
+      //Close recordset
+        rs.close();
     }
     
     
