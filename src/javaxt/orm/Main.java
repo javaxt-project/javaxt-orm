@@ -22,10 +22,10 @@ public class Main {
             
             
           //Create class
-            System.out.println(model.createClass());
+            System.out.println(model.getJavaCode());
         
           //Create DDL
-            System.out.println(model.createDDL());
+            System.out.println(model.getTableSQL());
             
         }
     }

@@ -29,8 +29,16 @@ public class Field {
         if (type.equalsIgnoreCase("int")){ 
             type = "integer";
         }
-        if (type.equalsIgnoreCase("long")){ 
+        else if (type.equalsIgnoreCase("long")){ 
             columnType = "bigint";
+        }
+        else if (type.equalsIgnoreCase("float")){
+            type = "Double";
+            columnType = "double precision";
+        }
+        else if (type.equalsIgnoreCase("decimal")){ 
+            type = "BigDecimal";
+            columnType = "numeric";
         }
         else if (type.equalsIgnoreCase("text") || type.equalsIgnoreCase("string")){ 
             type = "string";

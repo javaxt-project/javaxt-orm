@@ -57,11 +57,11 @@ public class Model {
     
     
   //**************************************************************************
-  //** createClass
+  //** getJavaCode
   //**************************************************************************
   /** Used to generate Java code for the model.
    */
-    public String createClass(){
+    public String getJavaCode(){
         String str = template.replace("${modelName}", name);
         str = str.replace("${package}", packageName);
         str = str.replace("${tableName}", Utils.camelCaseToUnderScore(name));
@@ -179,12 +179,12 @@ public class Model {
     
     
   //**************************************************************************
-  //** createDDL
+  //** getTableSQL
   //**************************************************************************
-  /** Used to generate DDL script for the model. The schema is targeted for
-   *  a PostgreSQL database.
+  /** Returns an SQL script used to create a table for the model. The schema 
+   *  is targeted for a PostgreSQL database.
    */
-    public String createDDL(){
+    public String getTableSQL(){
         String tableName = Utils.camelCaseToUnderScore(name).toUpperCase();
         
         StringBuilder str = new StringBuilder();
@@ -210,11 +210,13 @@ public class Model {
             if (field.isLastModifiedDate()) addLastModifiedTrigger = true;
         }
 
-
+      //Add primary key constraint
         str.append("    CONSTRAINT PK_");
         str.append(tableName);
         str.append(" PRIMARY KEY (ID)"); 
         
+        /*
+      //Add foreign key constraints
         if (!foreignKeys.isEmpty()){
             str.append(",\r\n");
             for (int i=0; i<foreignKeys.size(); i++){
@@ -235,10 +237,9 @@ public class Model {
                 
                 if (i<foreignKeys.size()-1) str.append(",");
                 str.append("\r\n");
-                //FOREIGN KEY (ARTICLE_ID) REFERENCES NEWS_ARTICLES(ARTICLE_ID)
-                
             }
         }
+        */
         str.append("\r\n};\r\n\r\n");
         
         
@@ -263,6 +264,22 @@ public class Model {
         return str.toString();
     }
     
+    
+  //**************************************************************************
+  //** getForeignKeySQL
+  //**************************************************************************
+  /** Returns an SQL script used to add foreign keys to a table associated 
+   *  with the model. Ordinarily, the foreign keys are defined inline with the
+   *  create table script. However, that would require creating tables in a
+   *  proper sequence which is difficult to do. Instead, it is easier to 
+   *  create all the tables first, then update the tables by adding a foreign 
+   *  key constraint.
+   */
+    public String getForeignKeySQL(){
+        StringBuilder str = new StringBuilder();
+        
+        return str.toString();
+    }
     
     
   //**************************************************************************
