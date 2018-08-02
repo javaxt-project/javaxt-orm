@@ -1,4 +1,5 @@
 package ${package};
+import java.util.ArrayList;
 import javaxt.json.*;
 import javaxt.utils.Date;
 import javaxt.sql.Connection;
@@ -35,6 +36,8 @@ public class ${modelName} {
         this.id = rs.getValue("id").toLong();
         ${getValues}
         rs.close();
+        
+        ${getModels}
     }
     
     

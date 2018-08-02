@@ -16,6 +16,7 @@ public class Field {
     private String columnType;
     private boolean required = false;
     private String foreignKey;
+    private String foreignTable;
     
   //**************************************************************************
   //** Constructor
@@ -62,17 +63,29 @@ public class Field {
             type = "object";
             columnType = "geometry(Geometry,4326)"; //PostgreSQL specific
         }
-        else{
-            //Model?
-            type = "long";
-            name = columnName + "_id";
-            foreignKey = columnName;      
-            columnType = "bigint";
+        else{ //Model?
+            
+            
+            if (type.endsWith("[]")){
+                String modelName = type.substring(0, type.length()-2);
+                type = "ArrayList<" + modelName + ">";
+                
+                
+            }
+            else{
+                type = "long";
+                columnName = columnName + "_id";
+                foreignKey = columnName;  
+                foreignTable = Utils.camelCaseToUnderScore(name);
+                columnType = "bigint";
+                this.name = Utils.underscoreToCamelCase(name) + "ID";
+            }
+
         }
         
         this.type = Utils.capitalize(type);
         if (columnType==null) columnType = type;
-    }
+    }   
     
     public String getName(){
         return name;
@@ -94,8 +107,16 @@ public class Field {
         return foreignKey;
     }
     
+    public String getForeignTable(){
+        return foreignTable;
+    }
     
     public boolean isLastModifiedDate(){
         return name.equalsIgnoreCase("lastModified") && type.equalsIgnoreCase("date");
     }
+    
+    public boolean isArray(){
+        return type.startsWith("ArrayList<");
+    }
+    
 }

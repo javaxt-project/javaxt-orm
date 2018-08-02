@@ -15,18 +15,21 @@ public class Main {
 
       //Iterate through all the models
         for (Model model : new Parser(inputFile.getText()).getModels()){
-            System.out.println(model);
+            //System.out.println(model);
 
             
-            if (!model.getName().equals("Contact")) continue;
+            String modelName = model.getName();
+            if (modelName.equals("Contact") || modelName.equals("Phone") || modelName.equals("Email")){} 
+            else continue;
             
             
           //Create class
-            System.out.println(model.getJavaCode());
+            if (modelName.equals("Contact")) System.out.println(model.getJavaCode());
+            
         
           //Create DDL
             System.out.println(model.getTableSQL());
-            
+            System.out.println(model.getForeignKeySQL());
         }
     }
 }

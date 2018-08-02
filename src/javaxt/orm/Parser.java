@@ -69,7 +69,7 @@ public class Parser {
         
         java.util.ArrayList<Model> arr = new java.util.ArrayList<Model>();
         for (String modelName : models.keySet()){
-            Model model = new Model(modelName, packageName, models.get(modelName).toJSONObject(), models);
+            Model model = new Model(modelName, packageName, models.get(modelName).toJSONObject());
             arr.add(model);
         }
         
