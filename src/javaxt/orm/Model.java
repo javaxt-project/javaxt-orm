@@ -99,6 +99,7 @@ public class Model {
         StringBuilder privateFields = new StringBuilder();
         StringBuilder publicMembers = new StringBuilder();
         StringBuilder getModels = new StringBuilder();
+        StringBuilder saveModels = new StringBuilder();
         StringBuilder getValues = new StringBuilder();
         StringBuilder setValues = new StringBuilder();
         StringBuilder getJson = new StringBuilder();
@@ -270,6 +271,14 @@ public class Model {
                     setValues.append(fieldName);
                     setValues.append(");\r\n");
                 }
+                else{
+                    
+                    saveModels.append("\r\n");
+                    saveModels.append("      //Save " + fieldName + "\r\n");
+                    saveModels.append("        for (int i=0; i<" + fieldName + ".size(); i++){\r\n");
+                    saveModels.append("            " + fieldName + ".get(i).save(conn);\r\n");
+                    saveModels.append("        }\r\n\r\n");
+                }
             }
             else{
                 getLastModified = "lastModified = rs.getValue(\"last_modified\").toDate();";
@@ -286,23 +295,26 @@ public class Model {
             }
             else{
                 toJson.append("\r\n");
-                toJson.append("        JSONArray _");
+                toJson.append("        if (!" + fieldName + ".isEmpty()){\r\n");
+                toJson.append("            JSONArray _");
                 toJson.append(fieldName);
                 toJson.append(" = new JSONArray();\r\n");
-                toJson.append("        for (int i=0; i<" + fieldName + ".size(); i++){\r\n");
-                toJson.append("            _" + fieldName + ".add(" + fieldName + ".get(i).toJson());\r\n");
-                toJson.append("        }\r\n");
-                toJson.append("        json.set(\"");
+                toJson.append("            for (int i=0; i<" + fieldName + ".size(); i++){\r\n");
+                toJson.append("                _" + fieldName + ".add(" + fieldName + ".get(i).toJson());\r\n");
+                toJson.append("            }\r\n");
+                toJson.append("            json.set(\"");
                 toJson.append(fieldName);
                 toJson.append("\", _");
                 toJson.append(fieldName);
-                toJson.append(");\r\n\r\n");
+                toJson.append(");\r\n");
+                toJson.append("        }\r\n\r\n");
             }
         }
         
         str = str.replace("${privateFields}", privateFields.toString().trim());
         str = str.replace("${publicMembers}", publicMembers.toString().trim());
         str = str.replace("${getModels}", getModels.toString());
+        str = str.replace("${saveModels}", saveModels.toString());
         str = str.replace("${getValues}", getValues.toString());
         str = str.replace("${setValues}", setValues.toString().trim());
         str = str.replace("${getJson}", getJson.toString().trim());

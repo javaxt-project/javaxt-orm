@@ -13,10 +13,18 @@ public class Main {
         if (!inputFile.exists()) throw new IllegalArgumentException("Input file not found");
         
 
-      //Iterate through all the models
-        for (Model model : new Parser(inputFile.getText()).getModels()){
-            //System.out.println(model);
+      //Get models
+        Model[] models = new Parser(inputFile.getText()).getModels();
 
+        
+      //Run tests
+        //testContact(models);
+        testUser(models);
+    }
+    
+    
+    private static void testContact(Model[] models){
+        for (Model model : models){
             
             String modelName = model.getName();
             if (modelName.equals("Contact") || modelName.equals("Phone") || modelName.equals("Email")){} 
@@ -28,6 +36,22 @@ public class Main {
             
         
           //Create DDL
+            System.out.println(model.getTableSQL());
+            System.out.println(model.getForeignKeySQL());
+        }
+    }
+    
+    
+    private static void testUser(Model[] models){
+        for (Model model : models){
+
+
+            
+            String modelName = model.getName();
+            if (!modelName.equals("User")) continue;
+            
+            
+            System.out.println(model.getJavaCode());
             System.out.println(model.getTableSQL());
             System.out.println(model.getForeignKeySQL());
         }

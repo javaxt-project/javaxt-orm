@@ -103,6 +103,8 @@ public class ${modelName} {
         
       //Close recordset
         rs.close();
+        
+        ${saveModels}
     }
     
     
