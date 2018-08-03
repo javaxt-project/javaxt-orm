@@ -111,6 +111,11 @@ public class Model {
             String fieldType = field.getType();
             String methodName = Utils.capitalize(fieldName);
             String columnName = field.getColumnName();
+            String modelName = null;
+            if (field.isArray()){
+                modelName = fieldType.substring(10, fieldType.length()-1);
+            }
+            
             
           //Append private field
             privateFields.append("    private ");
@@ -133,7 +138,7 @@ public class Model {
                 publicMembers.append("    }\r\n\r\n");
             }
             else{
-                String modelName = fieldType.substring(10, fieldType.length()-1);
+                
                 publicMembers.append("    public ");
                 publicMembers.append(modelName);
                 publicMembers.append("[] get");
@@ -168,6 +173,28 @@ public class Model {
                     publicMembers.append("    }\r\n\r\n");
                 }
                 else{
+                    publicMembers.append("    public void set");
+                    publicMembers.append(methodName);
+                    publicMembers.append("(");
+                    publicMembers.append(modelName);
+                    publicMembers.append("[] arr){\r\n");
+                    publicMembers.append("        " + fieldName + " = new " + fieldType + "();\r\n");
+                    publicMembers.append("        for (int i=0; i<arr.length; i++){\r\n");
+                    publicMembers.append("            ");
+                    publicMembers.append(fieldName);
+                    publicMembers.append(".add(arr[i]);\r\n");
+                    publicMembers.append("        }\r\n");
+                    publicMembers.append("    }\r\n\r\n");
+                    
+                    
+                    publicMembers.append("    public void add");
+                    publicMembers.append(modelName);
+                    publicMembers.append("(");
+                    String paramName = modelName.substring(0, 1).toLowerCase() + modelName.substring(1);
+                    publicMembers.append(modelName + " " + paramName);
+                    publicMembers.append("){\r\n");
+                    publicMembers.append("        " + fieldName + ".add(" + paramName + ");\r\n");
+                    publicMembers.append("    }\r\n\r\n");
                 }
             }
             
@@ -183,21 +210,16 @@ public class Model {
                 getValues.append("();\r\n");
             }
             else{
-                
-                String modelName = fieldType.substring(10, fieldType.length()-1);
                 String leftTable = this.tableName;
                 String leftColumn = leftTable + "_ID";
-
                 String rightTable = Utils.camelCaseToUnderScore(modelName).toUpperCase();
                 String rightColumn = rightTable + "_ID";
-
                 String tableName = leftTable + "_" + rightTable;
-                
                 
                 String idArray = modelName + "IDs";
                 getModels.append("\r\n\r\n");
                 getModels.append("      //Set " + fieldName + "\r\n");
-                getModels.append("        " + fieldName + " = " + fieldType + "();\r\n");
+                getModels.append("        " + fieldName + " = new " + fieldType + "();\r\n");
                 getModels.append("        ArrayList<Integer> " + idArray + " = new ArrayList<Integer>();\r\n");
                 getModels.append("        for (Recordset row : conn.getRecordset(\"select " + rightColumn + " from " + tableName + " where " + leftColumn + "=\"+id)){\r\n");
                 getModels.append("            " + idArray + ".add(row.getValue(0).toLong());\r\n");
@@ -205,8 +227,6 @@ public class Model {
                 getModels.append("        for (int id : " + idArray + "){\r\n");
                 getModels.append("            " + fieldName + ".add(new " + modelName + "(id, conn));\r\n");
                 getModels.append("        }\r\n\r\n");
-                
-                
             }
             
             
@@ -221,6 +241,23 @@ public class Model {
                 getJson.append("();\r\n");
             }
             else{
+                getJson.append("\r\n");
+                getJson.append("      //Set " + fieldName + "\r\n");
+                getJson.append("        " + fieldName + " = new " + fieldType + "();\r\n");
+                getJson.append("        if (json.has(\"");
+                getJson.append(fieldName);
+                getJson.append("\")){\r\n");
+                getJson.append("            JSONArray _");
+                getJson.append(fieldName);
+                getJson.append(" = json.get(\"");
+                getJson.append(fieldName);
+                getJson.append("\").toJSONArray();\r\n");
+                getJson.append("            for (int i=0; i<_" + fieldName + ".length(); i++){\r\n");
+                getJson.append("                ");
+                getJson.append(fieldName);
+                getJson.append(".add(new " + modelName + "(_" + fieldName + ".get(i).toJSONObject()));\r\n");
+                getJson.append("            }\r\n");
+                getJson.append("        }\r\n\r\n");
             }
             
             
@@ -246,6 +283,20 @@ public class Model {
                 toJson.append("\", ");
                 toJson.append(fieldName);
                 toJson.append(");\r\n");
+            }
+            else{
+                toJson.append("\r\n");
+                toJson.append("        JSONArray _");
+                toJson.append(fieldName);
+                toJson.append(" = new JSONArray();\r\n");
+                toJson.append("        for (int i=0; i<" + fieldName + ".size(); i++){\r\n");
+                toJson.append("            _" + fieldName + ".add(" + fieldName + ".get(i).toJson());\r\n");
+                toJson.append("        }\r\n");
+                toJson.append("        json.set(\"");
+                toJson.append(fieldName);
+                toJson.append("\", _");
+                toJson.append(fieldName);
+                toJson.append(");\r\n\r\n");
             }
         }
         
