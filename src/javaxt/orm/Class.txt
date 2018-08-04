@@ -1,9 +1,10 @@
 package ${package};
-import java.util.ArrayList;
 import javaxt.json.*;
 import javaxt.utils.Date;
+import javaxt.sql.Recordset;
 import javaxt.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 //******************************************************************************
 //**  ${modelName} Class
@@ -26,7 +27,7 @@ public class ${modelName} {
    *  the database.
    */
     public ${modelName}(long id, Connection conn) throws SQLException {
-        javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
+        Recordset rs = new Recordset();
         rs.open("select * from ${tableName} where id=" + id, conn);
         if (rs.EOF){
             rs.close();
@@ -84,7 +85,7 @@ public class ${modelName} {
     public void save(Connection conn) throws SQLException {
     
       //Add/Update record in the ${tableName} table
-        javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
+        Recordset rs = new Recordset();
         String sql = "select * from ${tableName}";
         if (id!=null) sql+= " where id=" + id;
         

@@ -66,19 +66,18 @@ public class Field {
         else{ //Model?
             
             
-            if (type.endsWith("[]")){
+            if (type.endsWith("[]")){ //Array of models
+                
                 String modelName = type.substring(0, type.length()-2);
                 type = "ArrayList<" + modelName + ">";
                 
-                
             }
-            else{
-                type = "long";
+            else{ //Single model
+                
                 columnName = columnName + "_id";
                 foreignKey = columnName;  
-                foreignTable = Utils.camelCaseToUnderScore(name);
+                foreignTable = Utils.camelCaseToUnderScore(type);
                 columnType = "bigint";
-                this.name = Utils.underscoreToCamelCase(name) + "ID";
             }
 
         }
@@ -113,6 +112,10 @@ public class Field {
     
     public boolean isLastModifiedDate(){
         return name.equalsIgnoreCase("lastModified") && type.equalsIgnoreCase("date");
+    }
+    
+    public boolean isModel(){
+        return foreignKey!=null;
     }
     
     public boolean isArray(){

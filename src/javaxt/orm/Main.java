@@ -19,7 +19,8 @@ public class Main {
         
       //Run tests
         //testContact(models);
-        testUser(models);
+        //testUser(models);
+        new Writer(models).write(outputDirectory);
     }
     
     

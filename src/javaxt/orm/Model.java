@@ -25,7 +25,7 @@ public class Model {
     protected Model(String modelName, String packageName, JSONObject modelInfo){
         this.name = modelName;
         this.fields = new java.util.ArrayList<Field>();
-        this.tableName = Utils.camelCaseToUnderScore(name).toUpperCase();
+        this.tableName = Utils.camelCaseToUnderScore(name).toLowerCase();
         this.packageName = packageName;
 
         
@@ -94,7 +94,7 @@ public class Model {
     public String getJavaCode(){
         String str = template.replace("${modelName}", name);
         str = str.replace("${package}", packageName);
-        str = str.replace("${tableName}", Utils.camelCaseToUnderScore(name));
+        str = str.replace("${tableName}", tableName);
         
         StringBuilder privateFields = new StringBuilder();
         StringBuilder publicMembers = new StringBuilder();
@@ -202,44 +202,102 @@ public class Model {
             
           //Update database constructor
             if (!field.isArray()){
-                getValues.append("        this.");
-                getValues.append(fieldName);
-                getValues.append(" = rs.getValue(\"");
-                getValues.append(columnName);
-                getValues.append("\").to");
-                getValues.append(fieldType);
-                getValues.append("();\r\n");
+                if (!field.isModel()){
+                    getValues.append("        this.");
+                    getValues.append(fieldName);
+                    getValues.append(" = rs.getValue(\"");
+                    getValues.append(columnName);
+                    getValues.append("\").to");
+                    getValues.append(fieldType);
+                    getValues.append("();\r\n");
+                }
+                else{
+                    String id = Utils.underscoreToCamelCase(fieldName) + "ID";
+                    getValues.append("        Long ");
+                    getValues.append(id);
+                    getValues.append(" = rs.getValue(\"");
+                    getValues.append(columnName);
+                    getValues.append("\").toLong();\r\n");
+                    
+                    getModels.append("\r\n\r\n");
+                    getModels.append("      //Set " + fieldName + "\r\n");
+                    getModels.append("        if (" + id + "!=null) ");
+                    getModels.append(fieldName + " = new " + fieldType + "(" + id + ", conn);\r\n");
+                }
             }
             else{
                 String leftTable = this.tableName;
                 String leftColumn = leftTable + "_ID";
-                String rightTable = Utils.camelCaseToUnderScore(modelName).toUpperCase();
+                String rightTable = Utils.camelCaseToUnderScore(modelName).toLowerCase();
                 String rightColumn = rightTable + "_ID";
                 String tableName = leftTable + "_" + rightTable;
                 
                 String idArray = modelName + "IDs";
+                idArray = idArray.substring(0, 1).toLowerCase() + idArray.substring(1);
+                
+                String id = modelName + "ID";
+                id = id.substring(0, 1).toLowerCase() + id.substring(1);
+                
+                
+              //Update get models (see database constructor)
                 getModels.append("\r\n\r\n");
                 getModels.append("      //Set " + fieldName + "\r\n");
                 getModels.append("        " + fieldName + " = new " + fieldType + "();\r\n");
-                getModels.append("        ArrayList<Integer> " + idArray + " = new ArrayList<Integer>();\r\n");
+                getModels.append("        ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
                 getModels.append("        for (Recordset row : conn.getRecordset(\"select " + rightColumn + " from " + tableName + " where " + leftColumn + "=\"+id)){\r\n");
                 getModels.append("            " + idArray + ".add(row.getValue(0).toLong());\r\n");
                 getModels.append("        }\r\n");
-                getModels.append("        for (int id : " + idArray + "){\r\n");
-                getModels.append("            " + fieldName + ".add(new " + modelName + "(id, conn));\r\n");
+                getModels.append("        for (long " + id + " : " + idArray + "){\r\n");
+                getModels.append("            " + fieldName + ".add(new " + modelName + "(" + id + ", conn));\r\n");
                 getModels.append("        }\r\n\r\n");
+                
+                
+              //Update save models (see save method)
+                saveModels.append("\r\n");
+                saveModels.append("      //Save " + fieldName + "\r\n");
+                saveModels.append("        ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
+                saveModels.append("        for (" + modelName + " obj : " + fieldName + "){\r\n");
+                saveModels.append("            obj.save(conn);\r\n");
+                saveModels.append("            " + idArray + ".add(obj.getID());\r\n");
+                saveModels.append("        }\r\n");
+                saveModels.append("        for (long " + id + " : " + idArray + "){\r\n");
+                String sql = "\"select * from " + tableName + " where " + leftColumn + 
+                "=\"+id\r\n            + \" and " + rightColumn + "=\" + " + id;
+                saveModels.append("            rs.open(" + sql + ", conn, false);\r\n");
+                saveModels.append("            if (rs.EOF){\r\n");
+                saveModels.append("                rs.addNew();\r\n");
+                saveModels.append("                rs.setValue(\"" + leftColumn + "\", id);\r\n");
+                saveModels.append("                rs.setValue(\"" + rightColumn + "\", " + id + ");\r\n");
+                saveModels.append("                rs.update();\r\n");
+                saveModels.append("            }\r\n");
+                saveModels.append("            rs.close();\r\n");
+                saveModels.append("        }\r\n\r\n");
             }
             
             
           //Update json constructor
             if (!field.isArray()){
-                getJson.append("        this.");
-                getJson.append(fieldName);
-                getJson.append(" = json.get(\"");
-                getJson.append(fieldName);
-                getJson.append("\").to");
-                getJson.append(fieldType);
-                getJson.append("();\r\n");
+                if (!field.isModel()){
+                    getJson.append("        this.");
+                    getJson.append(fieldName);
+                    getJson.append(" = json.get(\"");
+                    getJson.append(fieldName);
+                    getJson.append("\").to");
+                    getJson.append(fieldType);
+                    getJson.append("();\r\n");
+                }
+                else{
+                    getJson.append("        if (json.has(\"");
+                    getJson.append(fieldName);
+                    getJson.append("\")){\r\n            ");
+                    getJson.append(fieldName);
+                    getJson.append(" = new ");
+                    getJson.append(fieldType);
+                    getJson.append("(json.get(\"");
+                    getJson.append(fieldName);
+                    getJson.append("\").toJSONObject());\r\n");
+                    getJson.append("        }\r\n");
+                }
             }
             else{
                 getJson.append("\r\n");
@@ -269,15 +327,10 @@ public class Model {
                     setValues.append(columnName);
                     setValues.append("\", ");
                     setValues.append(fieldName);
+                    if (field.isModel()){
+                        setValues.append("==null ? null : " + fieldName + ".getID()");
+                    }
                     setValues.append(");\r\n");
-                }
-                else{
-                    
-                    saveModels.append("\r\n");
-                    saveModels.append("      //Save " + fieldName + "\r\n");
-                    saveModels.append("        for (int i=0; i<" + fieldName + ".size(); i++){\r\n");
-                    saveModels.append("            " + fieldName + ".get(i).save(conn);\r\n");
-                    saveModels.append("        }\r\n\r\n");
                 }
             }
             else{
@@ -291,6 +344,9 @@ public class Model {
                 toJson.append(fieldName);
                 toJson.append("\", ");
                 toJson.append(fieldName);
+                if (field.isModel()){
+                    toJson.append("==null ? null : " + fieldName + ".toJson()");
+                }
                 toJson.append(");\r\n");
             }
             else{
@@ -342,8 +398,8 @@ public class Model {
       //Begin create table script
         StringBuilder str = new StringBuilder();
         str.append("CREATE TABLE ");
-        str.append(tableName);
-        str.append(" {\r\n");
+        str.append(tableName.toUpperCase());
+        str.append(" (\r\n");
         str.append("    ID BIGSERIAL NOT NULL,\r\n"); 
         
         
@@ -368,21 +424,21 @@ public class Model {
 
       //Add primary key constraint
         str.append("    CONSTRAINT PK_");
-        str.append(tableName);
+        str.append(tableName.toUpperCase());
         str.append(" PRIMARY KEY (ID)"); 
         
         
       //End create table script
-        str.append("\r\n};\r\n\r\n");
+        str.append("\r\n);\r\n\r\n");
         
         
       //Add last modified trigger as needed. See Writer.write() for the 
       //last_modified() implementation.
         if (addLastModifiedTrigger){
             str.append("\r\nCREATE TRIGGER TGR_");
-            str.append(tableName);
+            str.append(tableName.toUpperCase());
             str.append("_UPDATE BEFORE INSERT OR UPDATE ON ");
-            str.append(tableName);
+            str.append(tableName.toUpperCase());
             str.append("\r\n    FOR EACH ROW EXECUTE PROCEDURE last_modified();\r\n\r\n");
         }
         
@@ -396,7 +452,7 @@ public class Model {
             String modelName = field.getType().substring(10);
             modelName = modelName.substring(0, modelName.length()-1);
             
-            String leftTable = this.tableName;
+            String leftTable = this.tableName.toUpperCase();
             String leftColumn = leftTable + "_ID";
             
             String rightTable = Utils.camelCaseToUnderScore(modelName).toUpperCase();
@@ -406,7 +462,7 @@ public class Model {
             
             str.append("CREATE TABLE ");
             str.append(tableName);
-            str.append(" {\r\n    ");
+            str.append(" (\r\n    ");
             str.append(leftColumn);
             str.append(" BIGINT NOT NULL,\r\n    "); 
             str.append(rightColumn);
@@ -419,7 +475,7 @@ public class Model {
             str.append(leftTable);
             str.append("(ID)\r\n");
             str.append("        ON DELETE CASCADE ON UPDATE NO ACTION");
-            str.append("};\r\n\r\n");
+            str.append(");\r\n\r\n");
         }
 
 
@@ -450,7 +506,7 @@ public class Model {
                     String foreignColumn = "ID";
 
                     str.append("ALTER TABLE ");
-                    str.append(tableName);
+                    str.append(tableName.toUpperCase());
                     str.append(" ADD FOREIGN KEY (");
                     str.append(foreignKey);
                     str.append(") REFERENCES ");
@@ -467,7 +523,7 @@ public class Model {
                 String modelName = field.getType().substring(10);
                 modelName = modelName.substring(0, modelName.length()-1);
 
-                String leftTable = this.tableName;
+                String leftTable = this.tableName.toUpperCase();
                 String leftColumn = leftTable + "_ID";
 
                 String rightTable = Utils.camelCaseToUnderScore(modelName).toUpperCase();
