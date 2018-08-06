@@ -20,6 +20,7 @@ public class Main {
       //Run tests
         //testContact(models);
         //testUser(models);
+        //testFile(models);
         new Writer(models).write(outputDirectory);
     }
     
@@ -50,6 +51,22 @@ public class Main {
             
             String modelName = model.getName();
             if (!modelName.equals("User")) continue;
+            
+            
+            System.out.println(model.getJavaCode());
+            System.out.println(model.getTableSQL());
+            System.out.println(model.getForeignKeySQL());
+        }
+    }
+    
+    
+    private static void testFile(Model[] models){
+        for (Model model : models){
+
+
+            
+            String modelName = model.getName();
+            if (!modelName.equals("File")) continue;
             
             
             System.out.println(model.getJavaCode());

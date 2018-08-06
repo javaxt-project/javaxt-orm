@@ -130,7 +130,12 @@ public class Model {
             if (!field.isArray()){
                 publicMembers.append("    public ");
                 publicMembers.append(fieldType);
-                publicMembers.append(" get");
+                if (fieldType.equals("Boolean")){
+                    publicMembers.append(" is");
+                }
+                else{
+                    publicMembers.append(" get");
+                }
                 publicMembers.append(methodName);
                 publicMembers.append("(){\r\n");
                 publicMembers.append("        return ");
@@ -203,13 +208,22 @@ public class Model {
           //Update database constructor
             if (!field.isArray()){
                 if (!field.isModel()){
-                    getValues.append("        this.");
-                    getValues.append(fieldName);
-                    getValues.append(" = rs.getValue(\"");
-                    getValues.append(columnName);
-                    getValues.append("\").to");
-                    getValues.append(fieldType);
-                    getValues.append("();\r\n");
+                    if (fieldType.equals("JSONObject")){
+                        getValues.append("        this.");
+                        getValues.append(fieldName);
+                        getValues.append(" = new JSONObject(rs.getValue(\"");
+                        getValues.append(columnName);
+                        getValues.append("\").toString());\r\n");
+                    }
+                    else{
+                        getValues.append("        this.");
+                        getValues.append(fieldName);
+                        getValues.append(" = rs.getValue(\"");
+                        getValues.append(columnName);
+                        getValues.append("\").to");
+                        getValues.append(fieldType);
+                        getValues.append("();\r\n");
+                    }
                 }
                 else{
                     String id = Utils.underscoreToCamelCase(fieldName) + "ID";
@@ -323,14 +337,41 @@ public class Model {
           //Update save method
             if (!field.isLastModifiedDate()){
                 if (!field.isArray()){
-                    setValues.append("        rs.setValue(\"");
-                    setValues.append(columnName);
-                    setValues.append("\", ");
-                    setValues.append(fieldName);
-                    if (field.isModel()){
-                        setValues.append("==null ? null : " + fieldName + ".getID()");
+                    if (fieldType.equals("JSONObject")){
+                        setValues.append("        if (" + fieldName + "==null) rs.setValue(\"" + columnName + "\", null);\r\n");
+                        setValues.append("        else{\r\n");
+                        setValues.append("            rs.setValue(\"");
+                        setValues.append(columnName);
+                        setValues.append("\", new javaxt.sql.Function(\r\n");
+                        setValues.append("                \"?::jsonb\", new Object[]{\r\n");
+                        setValues.append("                    " + fieldName + ".toString()\r\n");
+                        setValues.append("                }\r\n");
+                        setValues.append("            ));\r\n");
+                        setValues.append("        }\r\n");
+                        
+                        /*
+                        if (info==null) rs.setValue("FEED_INFO", null);
+                        else{
+                            rs.setValue("FEED_INFO", new javaxt.sql.Function(
+                                "?::jsonb", new Object[]{
+                                    info.toString()
+                                }
+                            ));
+                        }
+                        */
                     }
-                    setValues.append(");\r\n");
+                    else{
+                        setValues.append("        rs.setValue(\"");
+                        setValues.append(columnName);
+                        setValues.append("\", ");
+                        setValues.append(fieldName);
+                        if (field.isModel()){
+                            setValues.append("==null ? null : " + fieldName + ".getID()");
+                        }
+                        setValues.append(");\r\n");
+                    }
+                    
+
                 }
             }
             else{
