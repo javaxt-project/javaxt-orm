@@ -31,10 +31,36 @@ public class Writer {
         
         
       //Export java classes
+        boolean copyBCrypt = false;
         for (Model model : models){
             javaxt.io.File file = new javaxt.io.File(output, model.getName() + ".java");
             file.write(model.getJavaCode());
+            
+            
+            if (!copyBCrypt){
+                for (Field field : model.getFields()){
+                    if (field.getType().equals("Password")){
+                        copyBCrypt = true;
+                        break;
+                    }
+                }
+            }
         }
+        
+        
+        
+      //Export BCrypt as needed
+        if (copyBCrypt){
+            javaxt.io.Jar jar = new javaxt.io.Jar(this);
+            javaxt.io.Jar.Entry entry = jar.getEntry("javaxt.orm", "BCrypt.txt");
+            String bcryptCode = entry.getText();
+            String packageName = models[0].getPackageName();
+            bcryptCode = bcryptCode.replace("${package}", packageName);
+            javaxt.io.File file = new javaxt.io.File(output, "BCrypt.java");
+            file.write(bcryptCode);
+        }
+        
+        
         
         
       //Generate SQL script

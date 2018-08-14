@@ -50,7 +50,7 @@ public class Main {
 
             
             String modelName = model.getName();
-            if (!modelName.equals("User")) continue;
+            if (!modelName.equals("UserAccount")) continue;
             
             
             System.out.println(model.getJavaCode());

@@ -1,10 +1,9 @@
 package ${package};
 import javaxt.json.*;
-import javaxt.utils.Date;
 import javaxt.sql.Recordset;
 import javaxt.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
+${includes}
 
 //******************************************************************************
 //**  ${modelName} Class

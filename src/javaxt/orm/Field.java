@@ -15,6 +15,9 @@ public class Field {
     private String columnName;
     private String columnType;
     private boolean required = false;
+    private boolean unique = false;
+    private Object defaultValue = null;
+    private Integer length;
     private String foreignKey;
     private String foreignTable;
     
@@ -62,6 +65,10 @@ public class Field {
         else if (type.equalsIgnoreCase("geo")){
             type = "object";
             columnType = "geometry(Geometry,4326)"; //PostgreSQL specific
+        }
+        else if (type.equalsIgnoreCase("password")){
+            //type = "String";
+            columnType = "text";
         }
         else{ //Model?
             
@@ -122,4 +129,52 @@ public class Field {
         return type.startsWith("ArrayList<");
     }
     
+   
+    
+  /** Returns true if a value is required for this field. Default is false (nullable). 
+   */
+    public boolean isRequired(){
+        return required;
+    }
+    
+    public void isRequired(boolean required){
+        this.required = required;
+    }
+    
+    
+  /** Returns true if the field value must be unique. Default is false. 
+   */
+    public boolean isUnique(){
+        return unique;
+    }
+    
+    public void isUnique(boolean unique){
+        this.unique = unique;
+    }
+    
+  /** Returns true if the field has a default value. 
+   */
+    public boolean hasDefaultValue(){
+        return defaultValue!=null;
+    }
+   
+    
+  /** Returns the default value assigned to this field. Returns null if there  
+   *  is no default value. 
+   */
+    public Object getDefaultValue(){
+        return defaultValue;
+    }
+    
+    public void setDefaultValue(Object defaultValue){
+        this.defaultValue = defaultValue;
+    }
+ 
+
+    
+    public void setLength(int length){
+        if (this.columnType.equalsIgnoreCase("text")){
+            this.columnType = "VARCHAR(" + length + ")";
+        }
+    }
 }

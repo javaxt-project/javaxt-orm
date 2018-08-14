@@ -53,6 +53,47 @@ public class Model {
             Field field = new Field(json.get("name").toString(), json.get("model").toString()+"[]");
             fields.add(field);
         }
+        
+        
+        
+      //Parse constraints
+        JSONArray constraints = modelInfo.get("constraints").toJSONArray();
+        if (constraints!=null)
+        for (int i=0; i<constraints.length(); i++){
+            JSONObject json = constraints.get(i).toJSONObject();
+            String fieldName = json.get("name").toString();
+            Boolean isRequired = json.get("required").toBoolean();
+            if (isRequired==null) isRequired = json.get("nullable").toBoolean();
+            Boolean isUnique = json.get("unique").toBoolean();
+            Integer length = json.get("length").toInteger();
+            if (length==null) length = json.get("size").toInteger();
+            
+            for (Field field : fields){
+                if (field.getName().equals(fieldName)){
+                    if (isRequired!=null) field.isRequired(isRequired);
+                    if (isUnique!=null) field.isUnique(isUnique);
+                    if (length!=null) field.setLength(length);
+                    break;
+                }
+            }
+        }
+        
+        
+      //Parse default values
+        JSONArray defaultValues = modelInfo.get("defaults").toJSONArray();
+        if (defaultValues!=null)
+        for (int i=0; i<defaultValues.length(); i++){
+            JSONObject json = defaultValues.get(i).toJSONObject();
+            String fieldName = json.get("name").toString();
+            Object val = json.get("value").toObject();
+            
+            for (Field field : fields){
+                if (field.getName().equals(fieldName)){
+                    field.setDefaultValue(val);
+                    break;
+                }
+            }
+        }
     }
     
     
@@ -63,6 +104,11 @@ public class Model {
    */
     public String getName(){
         return name;
+    }
+    
+    
+    public String getPackageName(){
+        return packageName;
     }
     
     
@@ -105,6 +151,7 @@ public class Model {
         StringBuilder getJson = new StringBuilder();
         StringBuilder toJson = new StringBuilder();
         String getLastModified = "";
+        java.util.TreeSet<String> includes = new java.util.TreeSet<String>();
         
         
         for (Field field : fields){
@@ -115,33 +162,54 @@ public class Model {
             String modelName = null;
             if (field.isArray()){
                 modelName = fieldType.substring(10, fieldType.length()-1);
+                includes.add("java.util.ArrayList");
             }
+            boolean password = fieldType.equals("Password");
+            if (password) includes.add(packageName + ".BCrypt");
+            if (fieldType.equals("Date")) includes.add("javaxt.utils.Date");
             
             
           //Append private field
-            privateFields.append("    private ");
-            privateFields.append(fieldType);
-            privateFields.append(" ");
-            privateFields.append(fieldName);
-            privateFields.append(";\r\n");
-            
+            if (!password){
+                privateFields.append("    private ");
+                privateFields.append(fieldType);
+                privateFields.append(" ");
+                privateFields.append(fieldName);
+                privateFields.append(";\r\n");
+            }
+            else{
+                privateFields.append("    private String ");
+                privateFields.append(fieldName);
+                privateFields.append("; //bcrypt hash\r\n");
+            }
             
           //Append public get method
             if (!field.isArray()){
-                publicMembers.append("    public ");
-                publicMembers.append(fieldType);
-                if (fieldType.equals("Boolean")){
-                    publicMembers.append(" is");
+                if (!password){
+                    publicMembers.append("    public ");
+                    publicMembers.append(fieldType);
+                    publicMembers.append(" get");
+                    publicMembers.append(methodName);
+                    publicMembers.append("(){\r\n");
+                    publicMembers.append("        return ");
+                    publicMembers.append(fieldName);
+                    publicMembers.append(";\r\n");
+                    publicMembers.append("    }\r\n\r\n");
                 }
                 else{
-                    publicMembers.append(" get");
+                    
+                  //Special case for password fields. Instead of a "get" method
+                  //to return the password, we'll add an authenticate method.
+                    publicMembers.append("    public boolean authenticate(String ");
+                    publicMembers.append(fieldName);
+                    publicMembers.append("){\r\n");
+                    publicMembers.append("        return BCrypt.checkpw(");
+                    publicMembers.append(fieldName);
+                    publicMembers.append(", this.");
+                    publicMembers.append(fieldName);
+                    publicMembers.append(");\r\n");
+                    publicMembers.append("    }\r\n\r\n");
                 }
-                publicMembers.append(methodName);
-                publicMembers.append("(){\r\n");
-                publicMembers.append("        return ");
-                publicMembers.append(fieldName);
-                publicMembers.append(";\r\n");
-                publicMembers.append("    }\r\n\r\n");
             }
             else{
                 
@@ -167,14 +235,19 @@ public class Model {
                     publicMembers.append("    public void set");
                     publicMembers.append(methodName);
                     publicMembers.append("(");
-                    publicMembers.append(fieldType);
+                    publicMembers.append(password ? "String" : fieldType);
                     publicMembers.append(" ");
                     publicMembers.append(fieldName);
                     publicMembers.append("){\r\n");
                     publicMembers.append("        this.");
                     publicMembers.append(fieldName);
                     publicMembers.append(" = ");
-                    publicMembers.append(fieldName);
+                    if (password){
+                        publicMembers.append("BCrypt.hashpw(" + fieldName + ", BCrypt.gensalt())");
+                    }
+                    else{
+                        publicMembers.append(fieldName);
+                    }
                     publicMembers.append(";\r\n");
                     publicMembers.append("    }\r\n\r\n");
                 }
@@ -221,7 +294,7 @@ public class Model {
                         getValues.append(" = rs.getValue(\"");
                         getValues.append(columnName);
                         getValues.append("\").to");
-                        getValues.append(fieldType);
+                        getValues.append(password ? "String" : fieldType);
                         getValues.append("();\r\n");
                     }
                 }
@@ -292,13 +365,15 @@ public class Model {
           //Update json constructor
             if (!field.isArray()){
                 if (!field.isModel()){
-                    getJson.append("        this.");
-                    getJson.append(fieldName);
-                    getJson.append(" = json.get(\"");
-                    getJson.append(fieldName);
-                    getJson.append("\").to");
-                    getJson.append(fieldType);
-                    getJson.append("();\r\n");
+                    if (!password){
+                        getJson.append("        this.");
+                        getJson.append(fieldName);
+                        getJson.append(" = json.get(\"");
+                        getJson.append(fieldName);
+                        getJson.append("\").to");
+                        getJson.append(fieldType);
+                        getJson.append("();\r\n");
+                    }
                 }
                 else{
                     getJson.append("        if (json.has(\"");
@@ -381,14 +456,16 @@ public class Model {
             
           //Update toJson method
             if (!field.isArray()){
-                toJson.append("        json.set(\"");
-                toJson.append(fieldName);
-                toJson.append("\", ");
-                toJson.append(fieldName);
-                if (field.isModel()){
-                    toJson.append("==null ? null : " + fieldName + ".toJson()");
+                if (!password){
+                    toJson.append("        json.set(\"");
+                    toJson.append(fieldName);
+                    toJson.append("\", ");
+                    toJson.append(fieldName);
+                    if (field.isModel()){
+                        toJson.append("==null ? null : " + fieldName + ".toJson()");
+                    }
+                    toJson.append(");\r\n");
                 }
-                toJson.append(");\r\n");
             }
             else{
                 toJson.append("\r\n");
@@ -416,6 +493,20 @@ public class Model {
         str = str.replace("${setValues}", setValues.toString().trim());
         str = str.replace("${getJson}", getJson.toString().trim());
         str = str.replace("${toJson}", toJson.toString().trim());
+        
+        
+        if (includes.isEmpty()){
+            str = str.replace("${includes}", "");
+        }
+        else{
+            StringBuilder s = new StringBuilder();
+            for (String include : includes){
+                s.append("import ");
+                s.append(include);
+                s.append(";\r\n");
+            }
+            str = str.replace("${includes}", s.toString().trim());
+        }
         
         
         
@@ -455,6 +546,32 @@ public class Model {
             str.append(field.getColumnName().toUpperCase());
             str.append(" ");
             str.append(field.getColumnType());
+            
+            
+            if (field.isRequired()) str.append(" NOT NULL");
+            
+            if (field.hasDefaultValue()){
+                Object defaultValue = field.getDefaultValue();
+                str.append(" DEFAULT ");
+                if (defaultValue instanceof String){
+                    String val = (String) defaultValue;
+                    if (val.contains("(") && val.endsWith(")")){ 
+                        str.append(val);
+                    }
+                    else{
+                        str.append("'" + val.replace("'", "''") + "'");
+                    }
+                }
+                else{
+                    str.append(defaultValue.toString());
+                }
+            }
+            
+            
+            if (field.isUnique()) str.append(" UNIQUE");
+            
+            
+            
             str.append(",");
             str.append("\r\n");
             
