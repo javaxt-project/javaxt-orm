@@ -167,6 +167,7 @@ public class Model {
             boolean password = fieldType.equals("Password");
             if (password) includes.add(packageName + ".BCrypt");
             if (fieldType.equals("Date")) includes.add("javaxt.utils.Date");
+            if (fieldType.equals("BigDecimal")) includes.add("java.math.BigDecimal");
             
             
           //Append private field

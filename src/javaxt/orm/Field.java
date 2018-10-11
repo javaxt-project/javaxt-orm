@@ -36,11 +36,11 @@ public class Field {
         else if (type.equalsIgnoreCase("long")){ 
             columnType = "bigint";
         }
-        else if (type.equalsIgnoreCase("float")){
+        else if (type.equalsIgnoreCase("double") || type.equalsIgnoreCase("float")){
             type = "Double";
             columnType = "double precision";
         }
-        else if (type.equalsIgnoreCase("decimal")){ 
+        else if (type.equalsIgnoreCase("decimal") || type.equalsIgnoreCase("numeric")){ 
             type = "BigDecimal";
             columnType = "numeric";
         }

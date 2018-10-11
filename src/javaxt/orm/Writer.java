@@ -28,10 +28,12 @@ public class Writer {
   /** Used to output Java classes and DDL script to a given directory.
    */
     public void write(javaxt.io.Directory output){
+        javaxt.io.Jar jar = new javaxt.io.Jar(this);
         
         
       //Export java classes
         boolean copyBCrypt = false;
+        boolean copyConfig = true;
         for (Model model : models){
             javaxt.io.File file = new javaxt.io.File(output, model.getName() + ".java");
             file.write(model.getJavaCode());
@@ -45,13 +47,16 @@ public class Writer {
                     }
                 }
             }
+            
+            if (model.getName().equals("Config")){
+                copyConfig = false;
+            }
         }
         
         
         
       //Export BCrypt as needed
         if (copyBCrypt){
-            javaxt.io.Jar jar = new javaxt.io.Jar(this);
             javaxt.io.Jar.Entry entry = jar.getEntry("javaxt.orm", "BCrypt.txt");
             String bcryptCode = entry.getText();
             String packageName = models[0].getPackageName();
@@ -61,6 +66,15 @@ public class Writer {
         }
         
         
+      //Export Config as needed
+        if (copyConfig){
+            javaxt.io.Jar.Entry entry = jar.getEntry("javaxt.orm", "Config.txt");
+            String configCode = entry.getText();
+            String packageName = models[0].getPackageName();
+            configCode = configCode.replace("${package}", packageName);
+            javaxt.io.File file = new javaxt.io.File(output, "Config.java");
+            file.write(configCode);
+        }
         
         
       //Generate SQL script

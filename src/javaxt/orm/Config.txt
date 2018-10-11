@@ -1,0 +1,59 @@
+package ${package};
+import javaxt.sql.Connection;
+import java.sql.SQLException;
+
+public class Config {
+
+    public Config(){}
+    
+
+    public javaxt.sql.Database getDatabase(){
+        javaxt.sql.Database db = new javaxt.sql.Database();
+        db.setDriver("PostgreSQL");
+        db.setHost("localhost", 5432);
+        db.setName("${package}");
+        db.setUserName("postgres");
+        db.setPassword("password");
+        return db;
+    }
+
+
+
+    public void initSchema(Connection conn) throws SQLException {
+        
+        javaxt.io.Jar jar = new javaxt.io.Jar(this);
+        String schema = jar.getEntry("${package}", "Database.sql").getText();
+        java.util.ArrayList<String> statements = new java.util.ArrayList<String>();
+        for (String s : schema.split(";")){
+
+            StringBuffer str = new StringBuffer();
+            for (String i : s.split("\r\n")){
+                if (!i.trim().startsWith("--") && !i.trim().startsWith("COMMENT ")){
+                    str.append(i + "\r\n");
+                }
+            }
+
+            String cmd = str.toString().trim();
+            if (cmd.length()>0){
+                statements.add(str.toString() + ";");
+            }
+        }
+        
+        
+        java.sql.Statement stmt = conn.getConnection().createStatement();
+        for (String cmd : statements){
+
+          //Print table name
+            if (cmd.startsWith("CREATE TABLE")){
+                String tableName = cmd.substring(cmd.indexOf("TABLE")+5, cmd.indexOf("(")).trim();
+                if (tableName.startsWith("\"") && tableName.endsWith("\"")) tableName = tableName.substring(1, tableName.length()-1);
+                System.out.println("CREATE " + tableName);
+            }
+
+          //Execute statment
+            stmt.execute(cmd);
+        }
+        stmt.close();
+    }
+
+}
