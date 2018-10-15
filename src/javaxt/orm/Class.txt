@@ -17,8 +17,13 @@ public class ${modelName} {
     private Long id;
     ${privateFields}
     
-
     
+  //**************************************************************************
+  //** Constructor
+  //**************************************************************************
+    public ${modelName}(){}
+
+
   //**************************************************************************
   //** Constructor
   //**************************************************************************
@@ -85,8 +90,8 @@ public class ${modelName} {
     
       //Add/Update record in the ${tableName} table
         Recordset rs = new Recordset();
-        String sql = "select * from ${tableName}";
-        if (id!=null) sql+= " where id=" + id;
+        String sql = "select * from ${tableName} where id " + 
+        (id==null ? "is null" : ("= "+id));
         
         rs.open(sql, conn, false);
         if (id==null) rs.addNew();
@@ -108,7 +113,6 @@ public class ${modelName} {
     }
     
     
-    
   //**************************************************************************
   //** delete
   //**************************************************************************
@@ -119,6 +123,41 @@ public class ${modelName} {
         else conn.execute("delete from ${tableName} where id=" + id);
     }
 
+    
+  //**************************************************************************
+  //** get
+  //**************************************************************************
+  /** Used to find a ${modelName} using a given set of constraints. Note that
+   *  the last element in the list of constraints must be a Connection object.
+   *  Example:
+   *  ${modelName} obj = ${modelName}.get("id=", 1, conn);
+   */
+    public static ${modelName} get(Object...args) throws SQLException {
+        Connection conn = (Connection) args[args.length-1];
+        Long id = null;
+        StringBuilder str = new StringBuilder("select id from ${tableName} where ");
+        for (int i=0; i<args.length-1; i++){
+            str.append(args[i]);
+            i++;
+            Object val = args[i];
+            if (val instanceof String){
+                str.append("'");
+                str.append(val);
+                str.append("'");
+            }
+            else{
+                str.append(val);
+            }
+            if (i<args.length-2) str.append(" and ");
+        }
+        javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
+        rs.open(str.toString(), conn);
+        if (!rs.EOF) id = rs.getValue(0).toLong();
+        rs.close();
+
+        if (id!=null) return new ${modelName}(id, conn);
+        return null;
+    }
     
     
   //**************************************************************************
