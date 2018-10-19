@@ -73,7 +73,7 @@ public class Writer {
             String packageName = models[0].getPackageName();
             configCode = configCode.replace("${package}", packageName);
             javaxt.io.File file = new javaxt.io.File(output, "Config.java");
-            file.write(configCode);
+            if (!file.exists()) file.write(configCode);
         }
         
         
@@ -92,7 +92,9 @@ public class Writer {
         for (Model model : models){
             sql.append(model.getForeignKeySQL());
         }
-        
+        for (Model model : models){
+            sql.append(model.getIndexSQL());
+        }
         
       //Export SQL script
         javaxt.io.File file = new javaxt.io.File(output, "Database.sql");

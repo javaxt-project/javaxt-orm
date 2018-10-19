@@ -1,27 +1,46 @@
 package ${package};
 import javaxt.sql.Connection;
 import java.sql.SQLException;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Config {
 
-    public Config(){}
-    
+    private static ConcurrentHashMap<String, Object> config = 
+    new ConcurrentHashMap<String, Object>();
 
-    public javaxt.sql.Database getDatabase(){
-        javaxt.sql.Database db = new javaxt.sql.Database();
-        db.setDriver("PostgreSQL");
-        db.setHost("localhost", 5432);
-        db.setName("${package}");
-        db.setUserName("postgres");
-        db.setPassword("password");
+    private Config(){}
+
+
+  //**************************************************************************
+  //** getDatabase
+  //**************************************************************************
+    public static javaxt.sql.Database getDatabase(){
+        javaxt.sql.Database db;
+        synchronized(config){
+            if (config.containsKey("database")){
+                db = (javaxt.sql.Database) config.get("database");
+            }
+            else{
+                db = new javaxt.sql.Database();
+                db.setDriver("PostgreSQL");
+                db.setHost("localhost", 5432);
+                db.setName("${package}");
+                db.setUserName("postgres");
+                db.setPassword("password");
+                config.put("database", db);
+                config.notifyAll();
+            }
+        }
         return db;
     }
 
 
-
-    public void initSchema(Connection conn) throws SQLException {
+  //**************************************************************************
+  //** initSchema
+  //**************************************************************************
+    public static void initSchema(Connection conn) throws SQLException {
         
-        javaxt.io.Jar jar = new javaxt.io.Jar(this);
+        javaxt.io.Jar jar = new Config().getJar();
         String schema = jar.getEntry("${package}", "Database.sql").getText();
         java.util.ArrayList<String> statements = new java.util.ArrayList<String>();
         for (String s : schema.split(";")){
@@ -56,4 +75,11 @@ public class Config {
         stmt.close();
     }
 
+
+  //**************************************************************************
+  //** getJar
+  //**************************************************************************
+    private javaxt.io.Jar getJar(){
+        return new javaxt.io.Jar(this);
+    }
 }

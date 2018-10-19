@@ -706,6 +706,54 @@ public class Model {
     
     
   //**************************************************************************
+  //** getIndexSQL
+  //**************************************************************************
+  /** Returns an SQL script used to add indexes to the table associated with 
+   *  the model. 
+   */
+    public String getIndexSQL(){
+        StringBuilder str = new StringBuilder();
+        String indexPrefix = "IDX_" + tableName.toUpperCase()+ "_";
+        java.util.Iterator<Field> it = fields.iterator();
+        while (it.hasNext()){
+            Field field = it.next();
+            if (!field.isArray()){
+                String foreignKey = field.getForeignKey();
+                if (foreignKey!=null){       
+                    foreignKey = foreignKey.toUpperCase();
+                    String foreignTable = field.getForeignTable().toUpperCase();
+                    str.append("CREATE INDEX ");
+                    str.append(indexPrefix);
+                    str.append(foreignTable);
+                    str.append(" ON ");
+                    str.append(tableName.toUpperCase());
+                    str.append("(");
+                    str.append(foreignKey);
+                    str.append(");\r\n");
+                }
+                else{
+                    String columnName = field.getColumnName().toUpperCase();
+                    if (field.getColumnType().startsWith("geo")){
+                        str.append("CREATE INDEX ");
+                        str.append(indexPrefix);
+                        str.append(columnName);
+                        str.append(" ON ");
+                        str.append(tableName.toUpperCase());
+                        str.append(" USING GIST(");
+                        str.append(columnName);
+                        str.append(");\r\n");
+                    }
+                }
+            }
+            else{
+                //TODO
+            }
+        }
+        return str.toString();
+    }
+    
+    
+  //**************************************************************************
   //** toString
   //**************************************************************************
   /** Returns the name of this model.

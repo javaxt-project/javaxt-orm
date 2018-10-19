@@ -74,7 +74,7 @@ public class ${modelName} {
         return id;
     }
 
-    public void setID(long id){
+    public void setID(Long id){
         this.id = id;
     }
     
