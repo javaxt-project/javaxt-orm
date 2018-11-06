@@ -1,7 +1,5 @@
 package ${package};
 import javaxt.json.*;
-import javaxt.sql.Recordset;
-import javaxt.sql.Connection;
 import java.sql.SQLException;
 ${includes}
 
@@ -91,12 +89,12 @@ public class ${modelName} extends javaxt.utils.Model {
   /** Used to save a ${modelName} in the database.
    */
     public void save() throws SQLException {
-        Connection conn = null;
+        javaxt.sql.Connection conn = null;
         try{
             conn = getConnection(this.getClass());
         
           //Add/Update record in the ${tableName} table
-            Recordset rs = new Recordset();
+            javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
             String sql = "select * from ${tableName} where id " + 
             (id==null ? "is null" : ("= "+id));
 
