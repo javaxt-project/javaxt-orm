@@ -285,14 +285,14 @@ public class Model {
                     if (fieldType.equals("JSONObject")){
                         getValues.append("        this.");
                         getValues.append(fieldName);
-                        getValues.append(" = new JSONObject(rs.getValue(\"");
+                        getValues.append(" = new JSONObject(getValue(rs, \"");
                         getValues.append(columnName);
                         getValues.append("\").toString());\r\n");
                     }
                     else{
                         getValues.append("        this.");
                         getValues.append(fieldName);
-                        getValues.append(" = rs.getValue(\"");
+                        getValues.append(" = getValue(rs, \"");
                         getValues.append(columnName);
                         getValues.append("\").to");
                         getValues.append(password ? "String" : fieldType);
@@ -303,14 +303,14 @@ public class Model {
                     String id = Utils.underscoreToCamelCase(fieldName) + "ID";
                     getValues.append("        Long ");
                     getValues.append(id);
-                    getValues.append(" = rs.getValue(\"");
+                    getValues.append(" = getValue(rs, \"");
                     getValues.append(columnName);
                     getValues.append("\").toLong();\r\n");
                     
                     getModels.append("\r\n\r\n");
                     getModels.append("      //Set " + fieldName + "\r\n");
                     getModels.append("        if (" + id + "!=null) ");
-                    getModels.append(fieldName + " = new " + fieldType + "(" + id + ", conn);\r\n");
+                    getModels.append(fieldName + " = new " + fieldType + "(" + id + ");\r\n");
                 }
             }
             else{
@@ -336,7 +336,7 @@ public class Model {
                 getModels.append("            " + idArray + ".add(row.getValue(0).toLong());\r\n");
                 getModels.append("        }\r\n");
                 getModels.append("        for (long " + id + " : " + idArray + "){\r\n");
-                getModels.append("            " + fieldName + ".add(new " + modelName + "(" + id + ", conn));\r\n");
+                getModels.append("            " + fieldName + ".add(new " + modelName + "(" + id + "));\r\n");
                 getModels.append("        }\r\n\r\n");
                 
                 
@@ -345,7 +345,7 @@ public class Model {
                 saveModels.append("      //Save " + fieldName + "\r\n");
                 saveModels.append("        ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
                 saveModels.append("        for (" + modelName + " obj : " + fieldName + "){\r\n");
-                saveModels.append("            obj.save(conn);\r\n");
+                saveModels.append("            obj.save();\r\n");
                 saveModels.append("            " + idArray + ".add(obj.getID());\r\n");
                 saveModels.append("        }\r\n");
                 saveModels.append("        for (long " + id + " : " + idArray + "){\r\n");
@@ -414,16 +414,16 @@ public class Model {
             if (!field.isLastModifiedDate()){
                 if (!field.isArray()){
                     if (fieldType.equals("JSONObject")){
-                        setValues.append("        if (" + fieldName + "==null) rs.setValue(\"" + columnName + "\", null);\r\n");
-                        setValues.append("        else{\r\n");
-                        setValues.append("            rs.setValue(\"");
+                        setValues.append("            if (" + fieldName + "==null  || " + fieldName + ".isEmpty()) rs.setValue(\"" + columnName + "\", null);\r\n");
+                        setValues.append("            else{\r\n");
+                        setValues.append("                rs.setValue(\"");
                         setValues.append(columnName);
                         setValues.append("\", new javaxt.sql.Function(\r\n");
-                        setValues.append("                \"?::jsonb\", new Object[]{\r\n");
-                        setValues.append("                    " + fieldName + ".toString()\r\n");
-                        setValues.append("                }\r\n");
-                        setValues.append("            ));\r\n");
-                        setValues.append("        }\r\n");
+                        setValues.append("                    \"?::jsonb\", new Object[]{\r\n");
+                        setValues.append("                        " + fieldName + ".toString()\r\n");
+                        setValues.append("                    }\r\n");
+                        setValues.append("                ));\r\n");
+                        setValues.append("            }\r\n");
                         
                         /*
                         if (info==null) rs.setValue("FEED_INFO", null);
@@ -437,7 +437,7 @@ public class Model {
                         */
                     }
                     else{
-                        setValues.append("        rs.setValue(\"");
+                        setValues.append("            rs.setValue(\"");
                         setValues.append(columnName);
                         setValues.append("\", ");
                         setValues.append(fieldName);

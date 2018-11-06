@@ -12,40 +12,36 @@ ${includes}
  *   Used to represent a ${modelName}
  *
  ******************************************************************************/
-public class ${modelName} {
+ 
+public class ${modelName} extends javaxt.utils.Model {
     
-    private Long id;
     ${privateFields}
     
     
   //**************************************************************************
   //** Constructor
   //**************************************************************************
-    public ${modelName}(){}
+    public ${modelName}(){
+        super("${tableName}");
+    }
 
 
   //**************************************************************************
   //** Constructor
   //**************************************************************************
-  /** Creates a new instance of this class using an ID and a connection to
-   *  the database.
+  /** Creates a new instance of this class using a record ID in the database.
    */
-    public ${modelName}(long id, Connection conn) throws SQLException {
-        Recordset rs = new Recordset();
-        rs.open("select * from ${tableName} where id=" + id, conn);
-        if (rs.EOF){
-            rs.close();
-            throw new SQLException("${modelName} not found.");
+    public ${modelName}(long id) throws SQLException {
+        this();
+        try{
+            init(id);
         }
-        
-        this.id = rs.getValue("id").toLong();
-        ${getValues}
-        rs.close();
-        
-        ${getModels}
+        catch(IllegalArgumentException e){
+            throw new SQLException("Device not found");
+        }
     }
-    
-    
+
+
   //**************************************************************************
   //** Constructor
   //**************************************************************************
@@ -53,10 +49,26 @@ public class ${modelName} {
    *  ${modelName}.
    */
     public ${modelName}(JSONObject json){
+        this();
         update(json);
     }
+
+
+  //**************************************************************************
+  //** update
+  //**************************************************************************
+  /** Used to update attributes using a record in the database.
+   */
+    protected void update(Object rs) throws SQLException {
     
-    
+      //Get values
+        this.id = getValue(rs, "id").toLong();
+        ${getValues}
+
+        ${getModels}
+    }
+
+
   //**************************************************************************
   //** update
   //**************************************************************************
@@ -70,14 +82,6 @@ public class ${modelName} {
     }
     
     
-    public Long getID(){
-        return id;
-    }
-
-    public void setID(Long id){
-        this.id = id;
-    }
-    
     ${publicMembers}
     
     
@@ -86,76 +90,51 @@ public class ${modelName} {
   //**************************************************************************
   /** Used to save a ${modelName} in the database.
    */
-    public void save(Connection conn) throws SQLException {
-    
-      //Add/Update record in the ${tableName} table
-        Recordset rs = new Recordset();
-        String sql = "select * from ${tableName} where id " + 
-        (id==null ? "is null" : ("= "+id));
+    public void save() throws SQLException {
+        Connection conn = null;
+        try{
+            conn = getConnection(this.getClass());
         
-        rs.open(sql, conn, false);
-        if (id==null) rs.addNew();
-        
-        ${setValues}
-        
-        rs.update();
-        
-        
-      //Update local variables
-        if (id==null) id = rs.getGeneratedKey().toLong();
-        ${getLastModified}
+          //Add/Update record in the ${tableName} table
+            Recordset rs = new Recordset();
+            String sql = "select * from ${tableName} where id " + 
+            (id==null ? "is null" : ("= "+id));
+
+            rs.open(sql, conn, false);
+            if (id==null) rs.addNew();
+
+            ${setValues}
+
+            rs.update();
         
         
-      //Close recordset
-        rs.close();
+          //Update local variables
+            if (id==null) id = rs.getGeneratedKey().toLong();
+            ${getLastModified}
         
-        ${saveModels}
-    }
-    
-    
-  //**************************************************************************
-  //** delete
-  //**************************************************************************
-  /** Used to delete a ${modelName} from the database.
-   */
-    public void delete(Connection conn) throws SQLException {
-        if (id==null) return;
-        else conn.execute("delete from ${tableName} where id=" + id);
+        
+          //Close recordset
+            rs.close();
+            conn.close();
+        
+            ${saveModels}
+        }
+        catch(SQLException e){
+            if (conn!=null) conn.close();
+            throw e;
+        }
     }
 
-    
+
   //**************************************************************************
   //** get
   //**************************************************************************
-  /** Used to find a ${modelName} using a given set of constraints. Note that
-   *  the last element in the list of constraints must be a Connection object.
-   *  Example:
-   *  ${modelName} obj = ${modelName}.get("id=", 1, conn);
+  /** Used to find a ${modelName} using a given set of constraints. Example:
+   *  ${modelName} obj = ${modelName}.get("id=", 1);
    */
     public static ${modelName} get(Object...args) throws SQLException {
-        Connection conn = (Connection) args[args.length-1];
-        Long id = null;
-        StringBuilder str = new StringBuilder("select id from ${tableName} where ");
-        for (int i=0; i<args.length-1; i++){
-            str.append(args[i]);
-            i++;
-            Object val = args[i];
-            if (val instanceof String){
-                str.append("'");
-                str.append(val);
-                str.append("'");
-            }
-            else{
-                str.append(val);
-            }
-            if (i<args.length-2) str.append(" and ");
-        }
-        javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
-        rs.open(str.toString(), conn);
-        if (!rs.EOF) id = rs.getValue(0).toLong();
-        rs.close();
-
-        if (id!=null) return new ${modelName}(id, conn);
+        Long id = new ${modelName}().getID(args);
+        if (id!=null) return new ${modelName}(id);
         return null;
     }
     
