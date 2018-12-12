@@ -32,22 +32,12 @@ public class Writer {
         
         
       //Export java classes
-        boolean copyBCrypt = false;
         boolean copyConfig = true;
         boolean hasGeometry = false;
         for (Model model : models){
             javaxt.io.File file = new javaxt.io.File(output, model.getName() + ".java");
             file.write(model.getJavaCode());
-            
-            
-            if (!copyBCrypt){
-                for (Field field : model.getFields()){
-                    if (field.getType().equals("Password")){
-                        copyBCrypt = true;
-                        break;
-                    }
-                }
-            }
+
             
             if (model.getName().equals("Config")){
                 copyConfig = false;
@@ -66,15 +56,6 @@ public class Writer {
         
         
         
-      //Export BCrypt as needed
-        if (copyBCrypt){
-            javaxt.io.Jar.Entry entry = jar.getEntry("javaxt.orm", "BCrypt.txt");
-            String bcryptCode = entry.getText();
-            String packageName = models[0].getPackageName();
-            bcryptCode = bcryptCode.replace("${package}", packageName);
-            javaxt.io.File file = new javaxt.io.File(output, "BCrypt.java");
-            file.write(bcryptCode);
-        }
         
         
       //Export Config as needed

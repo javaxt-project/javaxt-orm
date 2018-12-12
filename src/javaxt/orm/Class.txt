@@ -11,7 +11,7 @@ ${includes}
  *
  ******************************************************************************/
  
-public class ${modelName} extends javaxt.utils.Model {
+public class ${modelName} extends javaxt.sql.Model {
     
     ${privateFields}
     
