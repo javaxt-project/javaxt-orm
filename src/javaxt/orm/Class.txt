@@ -21,6 +21,7 @@ public class ${modelName} extends javaxt.utils.Model {
   //**************************************************************************
     public ${modelName}(){
         super("${tableName}");
+        ${initArrays}
     }
 
 
@@ -95,7 +96,7 @@ public class ${modelName} extends javaxt.utils.Model {
         
           //Add/Update record in the ${tableName} table
             javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
-            String sql = "select * from ${tableName} where id " + 
+            String sql = "select * from " + tableName + " where id " + 
             (id==null ? "is null" : ("= "+id));
 
             rs.open(sql, conn, false);

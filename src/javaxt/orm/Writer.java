@@ -34,6 +34,7 @@ public class Writer {
       //Export java classes
         boolean copyBCrypt = false;
         boolean copyConfig = true;
+        boolean hasGeometry = false;
         for (Model model : models){
             javaxt.io.File file = new javaxt.io.File(output, model.getName() + ".java");
             file.write(model.getJavaCode());
@@ -50,6 +51,16 @@ public class Writer {
             
             if (model.getName().equals("Config")){
                 copyConfig = false;
+            }
+            
+            
+            if (!hasGeometry){
+                for (Field field : model.getFields()){
+                    if (field.getColumnType().startsWith("geometry")){
+                        hasGeometry = true;
+                        break;
+                    }
+                }
             }
         }
         
@@ -79,6 +90,7 @@ public class Writer {
         
       //Generate SQL script
         StringBuilder sql = new StringBuilder();
+        if (hasGeometry) sql.append("CREATE EXTENSION postgis;\r\n\r\n");
         sql.append(
         "CREATE FUNCTION last_modified() RETURNS trigger AS $last_modified$\r\n" +
         "    BEGIN\r\n" +

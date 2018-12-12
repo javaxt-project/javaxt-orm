@@ -150,6 +150,8 @@ public class Model {
         StringBuilder setValues = new StringBuilder();
         StringBuilder getJson = new StringBuilder();
         StringBuilder toJson = new StringBuilder();
+        StringBuilder hasMany = new StringBuilder();
+        StringBuilder initArrays = new StringBuilder();
         String getLastModified = "";
         java.util.TreeSet<String> includes = new java.util.TreeSet<String>();
         
@@ -328,16 +330,18 @@ public class Model {
                 
                 
               //Update get models (see database constructor)
-                getModels.append("\r\n\r\n");
-                getModels.append("      //Set " + fieldName + "\r\n");
-                getModels.append("        " + fieldName + " = new " + fieldType + "();\r\n");
-                getModels.append("        ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
-                getModels.append("        for (Recordset row : conn.getRecordset(\"select " + rightColumn + " from " + tableName + " where " + leftColumn + "=\"+id)){\r\n");
-                getModels.append("            " + idArray + ".add(row.getValue(0).toLong());\r\n");
-                getModels.append("        }\r\n");
-                getModels.append("        for (long " + id + " : " + idArray + "){\r\n");
-                getModels.append("            " + fieldName + ".add(new " + modelName + "(" + id + "));\r\n");
-                getModels.append("        }\r\n\r\n");
+                hasMany.append("\r\n\r\n");
+                hasMany.append("          //Set " + fieldName + "\r\n");
+                hasMany.append("            ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
+                hasMany.append("            for (javaxt.sql.Recordset row : conn.getRecordset(\r\n");
+                hasMany.append("                \"select " + rightColumn + " from " + tableName + " where " + leftColumn + "=\"+id)){\r\n");
+                hasMany.append("                " + idArray + ".add(row.getValue(0).toLong());\r\n");
+                hasMany.append("            }\r\n");
+                hasMany.append("            for (long " + id + " : " + idArray + "){\r\n");
+                hasMany.append("                " + fieldName + ".add(new " + modelName + "(" + id + "));\r\n");
+                hasMany.append("            }\r\n\r\n");
+                
+                initArrays.append("        " + fieldName + " = new " + fieldType + "();\r\n");
                 
                 
               //Update save models (see save method)
@@ -392,7 +396,6 @@ public class Model {
             else{
                 getJson.append("\r\n");
                 getJson.append("      //Set " + fieldName + "\r\n");
-                getJson.append("        " + fieldName + " = new " + fieldType + "();\r\n");
                 getJson.append("        if (json.has(\"");
                 getJson.append(fieldName);
                 getJson.append("\")){\r\n");
@@ -486,6 +489,24 @@ public class Model {
             }
         }
         
+        
+      //
+        if (hasMany.length()>0){
+            getValues.append("\r\n\r\n");
+            getValues.append("        javaxt.sql.Connection conn = null;\r\n");
+            getValues.append("        try{\r\n");
+            getValues.append("            conn = getConnection(this.getClass());\r\n");
+            getValues.append(hasMany);
+            getValues.append("            conn.close();\r\n");
+            getValues.append("        }\r\n");
+            getValues.append("        catch(SQLException e){\r\n");
+            getValues.append("            if (conn!=null) conn.close();\r\n");
+            getValues.append("            throw e;\r\n");
+            getValues.append("        }\r\n");
+        }
+        
+        
+        str = str.replace("${initArrays}", initArrays.toString().trim());
         str = str.replace("${privateFields}", privateFields.toString().trim());
         str = str.replace("${publicMembers}", publicMembers.toString().trim());
         str = str.replace("${getModels}", getModels.toString());
