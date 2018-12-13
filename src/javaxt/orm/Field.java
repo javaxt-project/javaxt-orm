@@ -63,7 +63,7 @@ public class Field {
             columnType = "jsonb"; //PostgreSQL specific
         }
         else if (type.equalsIgnoreCase("geo")){
-            type = "object";
+            type = "Geometry";
             columnType = "geometry(Geometry,4326)"; //PostgreSQL specific
         }
         else if (type.equalsIgnoreCase("password")){

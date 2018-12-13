@@ -33,10 +33,10 @@ public class ${modelName} extends javaxt.sql.Model {
     public ${modelName}(long id) throws SQLException {
         this();
         try{
-            init(id);
+            init(id, ${fieldNames});
         }
         catch(IllegalArgumentException e){
-            throw new SQLException("Device not found");
+            throw new SQLException("${modelName} not found");
         }
     }
 
@@ -60,11 +60,15 @@ public class ${modelName} extends javaxt.sql.Model {
    */
     protected void update(Object rs) throws SQLException {
     
-      //Get values
-        this.id = getValue(rs, "id").toLong();
-        ${getValues}
-
-        ${getModels}
+        try{
+            this.id = getValue(rs, "id").toLong();
+${getValues}
+${getModels}
+        }
+        catch(Exception e){
+            if (e instanceof SQLException) throw (SQLException) e;
+            else throw new SQLException(e.getMessage());
+        }
     }
 
 

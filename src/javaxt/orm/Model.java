@@ -170,6 +170,10 @@ public class Model {
             if (password) includes.add("javaxt.encryption.BCrypt");
             if (fieldType.equals("Date")) includes.add("javaxt.utils.Date");
             if (fieldType.equals("BigDecimal")) includes.add("java.math.BigDecimal");
+            if (fieldType.equals("Geometry")){
+                includes.add("com.vividsolutions.jts.geom.Geometry");
+                includes.add("com.vividsolutions.jts.io.WKTReader");
+            }
             
             
           //Append private field
@@ -285,14 +289,21 @@ public class Model {
             if (!field.isArray()){
                 if (!field.isModel()){
                     if (fieldType.equals("JSONObject")){
-                        getValues.append("        this.");
+                        getValues.append("            this.");
                         getValues.append(fieldName);
                         getValues.append(" = new JSONObject(getValue(rs, \"");
                         getValues.append(columnName);
                         getValues.append("\").toString());\r\n");
                     }
+                    else if (fieldType.equals("Geometry")){
+                        getValues.append("            this.");
+                        getValues.append(fieldName);
+                        getValues.append(" = new WKTReader().read(getValue(rs, \"");
+                        getValues.append(columnName);
+                        getValues.append("\").toString());\r\n");
+                    }
                     else{
-                        getValues.append("        this.");
+                        getValues.append("            this.");
                         getValues.append(fieldName);
                         getValues.append(" = getValue(rs, \"");
                         getValues.append(columnName);
@@ -303,15 +314,15 @@ public class Model {
                 }
                 else{
                     String id = Utils.underscoreToCamelCase(fieldName) + "ID";
-                    getValues.append("        Long ");
+                    getValues.append("            Long ");
                     getValues.append(id);
                     getValues.append(" = getValue(rs, \"");
                     getValues.append(columnName);
                     getValues.append("\").toLong();\r\n");
                     
                     getModels.append("\r\n\r\n");
-                    getModels.append("      //Set " + fieldName + "\r\n");
-                    getModels.append("        if (" + id + "!=null) ");
+                    getModels.append("          //Set " + fieldName + "\r\n");
+                    getModels.append("            if (" + id + "!=null) ");
                     getModels.append(fieldName + " = new " + fieldType + "(" + id + ");\r\n");
                 }
             }
@@ -371,13 +382,28 @@ public class Model {
             if (!field.isArray()){
                 if (!field.isModel()){
                     if (!password){
-                        getJson.append("        this.");
-                        getJson.append(fieldName);
-                        getJson.append(" = json.get(\"");
-                        getJson.append(fieldName);
-                        getJson.append("\").to");
-                        getJson.append(fieldType);
-                        getJson.append("();\r\n");
+                        
+                        
+                        if (fieldType.equals("Geometry")){
+                            getJson.append("        try {\r\n");
+                            getJson.append("            this.");
+                            getJson.append(fieldName);
+                            getJson.append(" = new WKTReader().read(json.get(\"");
+                            getJson.append(columnName);
+                            getJson.append("\").toString());\r\n");
+                            getJson.append("        }\r\n");
+                            getJson.append("        catch(Exception e) {}\r\n");
+                        }
+                        else{
+                        
+                            getJson.append("        this.");
+                            getJson.append(fieldName);
+                            getJson.append(" = json.get(\"");
+                            getJson.append(fieldName);
+                            getJson.append("\").to");
+                            getJson.append(fieldType);
+                            getJson.append("();\r\n");
+                        }
                     }
                 }
                 else{
@@ -504,6 +530,22 @@ public class Model {
             getValues.append("            throw e;\r\n");
             getValues.append("        }\r\n");
         }
+        
+        
+        StringBuilder fieldNames = new StringBuilder("\r\n            \"id\"");
+        for (Field field : fields){
+            String fieldType = field.getType();
+            String columnName = field.getColumnName();
+            fieldNames.append(", ");
+            fieldNames.append("\r\n            ");
+            fieldNames.append("\"");
+            if (fieldType.equals("Geometry")){
+                fieldNames.append("ST_AsText(" + columnName + ") as ");
+            }
+            fieldNames.append(columnName);
+            fieldNames.append("\"");
+        }
+        str = str.replace("${fieldNames}", fieldNames.toString());
         
         
         str = str.replace("${initArrays}", initArrays.toString().trim());
