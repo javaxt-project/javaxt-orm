@@ -490,9 +490,15 @@ public class Model {
                     toJson.append("        json.set(\"");
                     toJson.append(fieldName);
                     toJson.append("\", ");
+                    if (fieldName.equals("json")) toJson.append("this.");
                     toJson.append(fieldName);
                     if (field.isModel()){
                         toJson.append("==null ? null : " + fieldName + ".toJson()");
+                    }
+                    else{
+                        if (fieldType.equals("Geometry")){
+                            toJson.append("==null ? null : " + fieldName + ".toString()");
+                        }
                     }
                     toJson.append(");\r\n");
                 }
@@ -516,7 +522,7 @@ public class Model {
         }
         
         
-      //
+      //Update the database constructor with hasMany variables
         if (hasMany.length()>0){
             getValues.append("\r\n\r\n");
             getValues.append("        javaxt.sql.Connection conn = null;\r\n");
@@ -532,6 +538,7 @@ public class Model {
         }
         
         
+      //Generate list of field names used in the init() method
         StringBuilder fieldNames = new StringBuilder("\r\n            \"id\"");
         for (Field field : fields){
             String fieldType = field.getType();
@@ -545,9 +552,11 @@ public class Model {
             fieldNames.append(columnName);
             fieldNames.append("\"");
         }
+        
+        
+      //Replace keys in the class template
         str = str.replace("${fieldNames}", fieldNames.toString());
-        
-        
+        str = str.replace("${field[0]}", fields.get(0).getColumnName());
         str = str.replace("${initArrays}", initArrays.toString().trim());
         str = str.replace("${privateFields}", privateFields.toString().trim());
         str = str.replace("${publicMembers}", publicMembers.toString().trim());
@@ -559,6 +568,8 @@ public class Model {
         str = str.replace("${toJson}", toJson.toString().trim());
         
         
+        
+      //Add includes
         if (includes.isEmpty()){
             str = str.replace("${includes}", "");
         }

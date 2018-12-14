@@ -127,19 +127,6 @@ ${getModels}
             throw e;
         }
     }
-
-
-  //**************************************************************************
-  //** get
-  //**************************************************************************
-  /** Used to find a ${modelName} using a given set of constraints. Example:
-   *  ${modelName} obj = ${modelName}.get("id=", 1);
-   */
-    public static ${modelName} get(Object...args) throws SQLException {
-        Long id = new ${modelName}().getID(args);
-        if (id!=null) return new ${modelName}(id);
-        return null;
-    }
     
     
   //**************************************************************************
@@ -152,5 +139,30 @@ ${getModels}
         if (id!=null) json.set("id", id);
         ${toJson}
         return json;
+    }
+    
+    
+  //**************************************************************************
+  //** get
+  //**************************************************************************
+  /** Used to find a ${modelName} using a given set of constraints. Example:
+   *  ${modelName} obj = ${modelName}.get("${field[0]}=", ${field[0]});
+   */
+    public static ${modelName} get(Object...args) throws SQLException {
+        Object obj = _get(${modelName}.class, args);
+        if (obj==null) return null;
+        return (${modelName}) obj;
+    }
+
+
+  //**************************************************************************
+  //** find
+  //**************************************************************************
+  /** Used to find ${modelName}s using a given set of constraints.
+   */
+    public static ${modelName}[] find(Object...args) throws SQLException {
+        Object[] arr = _find(${modelName}.class, args);
+        if (arr==null) return null;
+        return (${modelName}[]) arr;
     }
 }
