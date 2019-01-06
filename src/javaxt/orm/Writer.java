@@ -28,22 +28,14 @@ public class Writer {
   /** Used to output Java classes and DDL script to a given directory.
    */
     public void write(javaxt.io.Directory output){
-        javaxt.io.Jar jar = new javaxt.io.Jar(this);
         
-        
-      //Export java classes
-        boolean copyConfig = true;
+      //Check whether any of the fields are geospatial/geometry types
         boolean hasGeometry = false;
         for (Model model : models){
             javaxt.io.File file = new javaxt.io.File(output, model.getName() + ".java");
             file.write(model.getJavaCode());
 
-            
-            if (model.getName().equals("Config")){
-                copyConfig = false;
-            }
-            
-            
+
             if (!hasGeometry){
                 for (Field field : model.getFields()){
                     if (field.getColumnType().startsWith("geometry")){
@@ -52,20 +44,6 @@ public class Writer {
                     }
                 }
             }
-        }
-        
-        
-        
-        
-        
-      //Export Config as needed
-        if (copyConfig){
-            javaxt.io.Jar.Entry entry = jar.getEntry("javaxt.orm", "Config.txt");
-            String configCode = entry.getText();
-            String packageName = models[0].getPackageName();
-            configCode = configCode.replace("${package}", packageName);
-            javaxt.io.File file = new javaxt.io.File(output, "Config.java");
-            if (!file.exists()) file.write(configCode);
         }
         
         
