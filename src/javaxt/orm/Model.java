@@ -842,7 +842,7 @@ public class Model {
   //**************************************************************************
   //** escapeTableName
   //**************************************************************************
-  /** Returns a sql compatable table name
+  /** Returns a sql compatible table name
    */
     private String escapeTableName(String tableName){
         if (tableName.equalsIgnoreCase("user")){ //and db is postgres
