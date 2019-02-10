@@ -15,6 +15,7 @@ public class Model {
     private java.util.ArrayList<Field> fields;
     private static final String template = getTemplate();
     private String tableName;
+    private String escapedTableName;
     private String packageName;
     
   //**************************************************************************
@@ -26,6 +27,7 @@ public class Model {
         this.name = modelName;
         this.fields = new java.util.ArrayList<Field>();
         this.tableName = Utils.camelCaseToUnderScore(name).toLowerCase();
+        this.escapedTableName = escapeTableName(tableName);
         this.packageName = packageName;
 
         
@@ -605,7 +607,7 @@ public class Model {
       //Begin create table script
         StringBuilder str = new StringBuilder();
         str.append("CREATE TABLE ");
-        str.append(tableName.toUpperCase());
+        str.append(escapedTableName);
         str.append(" (\r\n");
         str.append("    ID BIGSERIAL NOT NULL,\r\n"); 
         
@@ -739,11 +741,11 @@ public class Model {
                     String foreignColumn = "ID";
 
                     str.append("ALTER TABLE ");
-                    str.append(tableName.toUpperCase());
+                    str.append(escapedTableName);
                     str.append(" ADD FOREIGN KEY (");
                     str.append(foreignKey);
                     str.append(") REFERENCES ");
-                    str.append(foreignTable);
+                    str.append(escapeTableName(foreignTable));
                     str.append("(");
                     str.append(foreignColumn);
                     str.append(")\r\n");
@@ -770,7 +772,7 @@ public class Model {
                 str.append(" ADD FOREIGN KEY (");
                 str.append(rightColumn);
                 str.append(") REFERENCES ");
-                str.append(rightTable);
+                str.append(escapeTableName(rightTable));
                 str.append("(ID)\r\n");
                 str.append("    ON DELETE CASCADE ON UPDATE NO ACTION;\r\n\r\n");
             }
@@ -800,7 +802,7 @@ public class Model {
                     str.append(indexPrefix);
                     str.append(foreignTable);
                     str.append(" ON ");
-                    str.append(tableName.toUpperCase());
+                    str.append(escapedTableName);
                     str.append("(");
                     str.append(foreignKey);
                     str.append(");\r\n");
@@ -812,7 +814,7 @@ public class Model {
                         str.append(indexPrefix);
                         str.append(columnName);
                         str.append(" ON ");
-                        str.append(tableName.toUpperCase());
+                        str.append(escapedTableName);
                         str.append(" USING GIST(");
                         str.append(columnName);
                         str.append(");\r\n");
@@ -835,8 +837,22 @@ public class Model {
     public String toString(){
         return getName();
     }
-    
-    
+
+
+  //**************************************************************************
+  //** escapeTableName
+  //**************************************************************************
+  /** Returns a sql compatable table name
+   */
+    private String escapeTableName(String tableName){
+        if (tableName.equalsIgnoreCase("user")){ //and db is postgres
+            return "\"" + tableName.toLowerCase() + "\"";
+        }
+        else{
+            return tableName.toUpperCase();
+        }
+    }
+
 
   //**************************************************************************
   //** getTemplate
