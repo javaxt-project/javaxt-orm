@@ -10,17 +10,19 @@ ${includes}
  *   Used to represent a ${modelName}
  *
  ******************************************************************************/
- 
+
 public class ${modelName} extends javaxt.sql.Model {
-    
+
     ${privateFields}
-    
-    
+
+
   //**************************************************************************
   //** Constructor
   //**************************************************************************
     public ${modelName}(){
-        super("${tableName}");
+        super("${tableName}", new java.util.HashMap<String, String>() {{
+            ${fieldMap}
+        }});
         ${initArrays}
     }
 
@@ -32,12 +34,7 @@ public class ${modelName} extends javaxt.sql.Model {
    */
     public ${modelName}(long id) throws SQLException {
         this();
-        try{
-            init(id, ${fieldNames});
-        }
-        catch(IllegalArgumentException e){
-            throw new SQLException("${modelName} not found");
-        }
+        init(id);
     }
 
 
@@ -59,7 +56,7 @@ public class ${modelName} extends javaxt.sql.Model {
   /** Used to update attributes using a record in the database.
    */
     protected void update(Object rs) throws SQLException {
-    
+
         try{
             this.id = getValue(rs, "id").toLong();
 ${getValues}
@@ -78,70 +75,19 @@ ${getModels}
   /** Used to update attributes with attributes from another ${modelName}.
    */
     public void update(JSONObject json){
-            
+
         Long id = json.get("id").toLong();
         if (id!=null && id>0) this.id = id;
         ${getJson}
     }
-    
-    
+
+
     ${publicMembers}
-    
-    
-  //**************************************************************************
-  //** save
-  //**************************************************************************
-  /** Used to save a ${modelName} in the database.
-   */
-    public void save() throws SQLException {
-        javaxt.sql.Connection conn = null;
-        try{
-            conn = getConnection(this.getClass());
-        
-          //Add/Update record in the ${tableName} table
-            javaxt.sql.Recordset rs = new javaxt.sql.Recordset();
-            String sql = "select * from " + tableName + " where id " + 
-            (id==null ? "is null" : ("= "+id));
+    ${saveModel}
+    ${toJson}
 
-            rs.open(sql, conn, false);
-            if (id==null) rs.addNew();
 
-            ${setValues}
 
-            rs.update();
-        
-        
-          //Update local variables
-            if (id==null) id = rs.getGeneratedKey().toLong();
-            ${getLastModified}
-        
-        
-          //Close recordset
-            rs.close();
-            conn.close();
-        
-            ${saveModels}
-        }
-        catch(SQLException e){
-            if (conn!=null) conn.close();
-            throw e;
-        }
-    }
-    
-    
-  //**************************************************************************
-  //** toJson
-  //**************************************************************************
-  /** Returns a string representation of the ${modelName} in JSON notation.
-   */
-    public JSONObject toJson(){
-        JSONObject json = new JSONObject();
-        if (id!=null) json.set("id", id);
-        ${toJson}
-        return json;
-    }
-    
-    
   //**************************************************************************
   //** get
   //**************************************************************************

@@ -20,7 +20,7 @@ public class Field {
     private Integer length;
     private String foreignKey;
     private String foreignTable;
-    
+
   //**************************************************************************
   //** Constructor
   //**************************************************************************
@@ -29,26 +29,30 @@ public class Field {
     protected Field(String name, String type){
         this.name = name;
         this.columnName = Utils.camelCaseToUnderScore(name);
-        
-        if (type.equalsIgnoreCase("int")){ 
+
+        if (type.equalsIgnoreCase("int")){
             type = "integer";
         }
-        else if (type.equalsIgnoreCase("long")){ 
+        else if (type.equalsIgnoreCase("long")){
             columnType = "bigint";
         }
         else if (type.equalsIgnoreCase("double") || type.equalsIgnoreCase("float")){
             type = "Double";
             columnType = "double precision";
         }
-        else if (type.equalsIgnoreCase("decimal") || type.equalsIgnoreCase("numeric")){ 
+        else if (type.equalsIgnoreCase("decimal") || type.equalsIgnoreCase("numeric")){
             type = "BigDecimal";
             columnType = "numeric";
         }
-        else if (type.equalsIgnoreCase("text") || type.equalsIgnoreCase("string")){ 
+        else if (type.equalsIgnoreCase("text") || type.equalsIgnoreCase("string")){
             type = "string";
             columnType = "text";
         }
-        else if (type.equalsIgnoreCase("boolean")){ 
+        else if (type.equalsIgnoreCase("char")){
+            type = "string";
+            columnType = "char(1)";
+        }
+        else if (type.equalsIgnoreCase("boolean")){
             //do nothing (type and columnType are all set)
         }
         else if (type.equalsIgnoreCase("date")){
@@ -71,110 +75,117 @@ public class Field {
             columnType = "text";
         }
         else{ //Model?
-            
-            
+
+
             if (type.endsWith("[]")){ //Array of models
-                
+
                 String modelName = type.substring(0, type.length()-2);
                 type = "ArrayList<" + modelName + ">";
-                
+
             }
             else{ //Single model
-                
+
                 columnName = columnName + "_id";
-                foreignKey = columnName;  
+                foreignKey = columnName;
                 foreignTable = Utils.camelCaseToUnderScore(type);
                 columnType = "bigint";
             }
 
         }
-        
+
         this.type = Utils.capitalize(type);
         if (columnType==null) columnType = type;
-    }   
-    
+    }
+
     public String getName(){
         return name;
     }
-    
+
     public String getType(){
         return type;
     }
-    
+
     public String getColumnName(){
         return columnName;
     }
-    
+
     public String getColumnType(){
         return columnType;
     }
-    
+
     public String getForeignKey(){
         return foreignKey;
     }
-    
+
     public String getForeignTable(){
         return foreignTable;
     }
-    
+
     public boolean isLastModifiedDate(){
         return name.equalsIgnoreCase("lastModified") && type.equalsIgnoreCase("date");
     }
-    
+
     public boolean isModel(){
         return foreignKey!=null;
     }
-    
+
     public boolean isArray(){
         return type.startsWith("ArrayList<");
     }
-    
-   
-    
-  /** Returns true if a value is required for this field. Default is false (nullable). 
+
+
+
+  /** Returns true if a value is required for this field. Default is false (nullable).
    */
     public boolean isRequired(){
         return required;
     }
-    
+
     public void isRequired(boolean required){
         this.required = required;
     }
-    
-    
-  /** Returns true if the field value must be unique. Default is false. 
+
+
+  /** Returns true if the field value must be unique. Default is false.
    */
     public boolean isUnique(){
         return unique;
     }
-    
+
     public void isUnique(boolean unique){
         this.unique = unique;
     }
-    
-  /** Returns true if the field has a default value. 
+
+  /** Returns true if the field has a default value.
    */
     public boolean hasDefaultValue(){
         return defaultValue!=null;
     }
-   
-    
-  /** Returns the default value assigned to this field. Returns null if there  
-   *  is no default value. 
+
+
+  /** Returns the default value assigned to this field. Returns null if there
+   *  is no default value.
    */
     public Object getDefaultValue(){
         return defaultValue;
     }
-    
+
     public void setDefaultValue(Object defaultValue){
         this.defaultValue = defaultValue;
     }
- 
 
-    
+
+
     public void setLength(int length){
-        if (this.columnType.equalsIgnoreCase("text")){
-            this.columnType = "VARCHAR(" + length + ")";
+        if (columnType.equalsIgnoreCase("text")){
+            columnType = "VARCHAR(" + length + ")";
+            this.length = length;
+        }
+        else{
+            if (columnType.toLowerCase().startsWith("char(")){
+                columnType = "CHAR(" + length + ")";
+                this.length = length;
+            }
         }
     }
 }
