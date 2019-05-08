@@ -306,6 +306,13 @@ public class Model {
                         getValues.append(columnName);
                         getValues.append("\").toString());\r\n");
                     }
+                    else if (fieldType.equals("byte[]")){
+                        getValues.append("            this.");
+                        getValues.append(fieldName);
+                        getValues.append(" = getValue(rs, \"");
+                        getValues.append(columnName);
+                        getValues.append("\").toByteArray();\r\n");
+                    }
                     else if (fieldType.equals("Geometry")){
                         getValues.append("            this.");
                         getValues.append(fieldName);
@@ -405,8 +412,14 @@ public class Model {
                             getJson.append("        }\r\n");
                             getJson.append("        catch(Exception e) {}\r\n");
                         }
+                        else if (fieldType.equals("byte[]")){
+                            getJson.append("        this.");
+                            getJson.append(fieldName);
+                            getJson.append(" = json.get(\"");
+                            getJson.append(fieldName);
+                            getJson.append("\").toByteArray();\r\n");
+                        }
                         else{
-
                             getJson.append("        this.");
                             getJson.append(fieldName);
                             getJson.append(" = json.get(\"");

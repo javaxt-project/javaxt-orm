@@ -93,7 +93,9 @@ public class Field {
 
         }
 
-        this.type = Utils.capitalize(type);
+        if (type.equals("byte[]")) this.type = type;
+        else this.type = Utils.capitalize(type);
+
         if (columnType==null) columnType = type;
     }
 
