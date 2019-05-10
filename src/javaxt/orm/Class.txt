@@ -87,7 +87,6 @@ ${getModels}
     ${toJson}
 
 
-
   //**************************************************************************
   //** get
   //**************************************************************************
@@ -96,8 +95,7 @@ ${getModels}
    */
     public static ${modelName} get(Object...args) throws SQLException {
         Object obj = _get(${modelName}.class, args);
-        if (obj==null) return null;
-        return (${modelName}) obj;
+        return obj==null ? null : (${modelName}) obj;
     }
 
 
@@ -107,8 +105,11 @@ ${getModels}
   /** Used to find ${modelName}s using a given set of constraints.
    */
     public static ${modelName}[] find(Object...args) throws SQLException {
-        Object[] arr = _find(${modelName}.class, args);
-        if (arr==null) return null;
-        return (${modelName}[]) arr;
+        Object[] obj = _find(${modelName}.class, args);
+        ${modelName}[] arr = new ${modelName}[obj.length];
+        for (int i=0; i<arr.length; i++){
+            arr[i] = (${modelName}) obj[i];
+        }
+        return arr;
     }
 }

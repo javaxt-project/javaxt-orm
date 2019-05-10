@@ -17,18 +17,28 @@ public class Model {
     private String tableName;
     private String escapedTableName;
     private String packageName;
+    private String schemaName;
+    private String escapedSchemaName;
+
 
   //**************************************************************************
   //** Constructor
   //**************************************************************************
   /** Creates a new instance of this class.
    */
-    protected Model(String modelName, String packageName, JSONObject modelInfo){
+    protected Model(String modelName, String packageName, String schemaName, JSONObject modelInfo){
         this.name = modelName;
         this.fields = new java.util.ArrayList<Field>();
+
+        this.packageName = packageName;
+
         this.tableName = Utils.camelCaseToUnderScore(name).toLowerCase();
         this.escapedTableName = escapeTableName(tableName);
-        this.packageName = packageName;
+        this.schemaName = schemaName;
+        this.escapedSchemaName = escapeTableName(schemaName);
+        if (schemaName!=null){
+            escapedTableName = escapedSchemaName + "." + escapedTableName;
+        }
 
 
       //Parse fields
@@ -109,6 +119,9 @@ public class Model {
     }
 
 
+  //**************************************************************************
+  //** getPackageName
+  //**************************************************************************
     public String getPackageName(){
         return packageName;
     }
@@ -135,6 +148,14 @@ public class Model {
 
 
   //**************************************************************************
+  //** getSchemaName
+  //**************************************************************************
+    public String getSchemaName(){
+        return schemaName;
+    }
+
+
+  //**************************************************************************
   //** getJavaCode
   //**************************************************************************
   /** Used to generate Java code for the model.
@@ -142,7 +163,7 @@ public class Model {
     public String getJavaCode(){
         String str = template.replace("${modelName}", name);
         str = str.replace("${package}", packageName);
-        str = str.replace("${tableName}", tableName);
+        str = str.replace("${tableName}", schemaName==null ? tableName : (schemaName + "." + tableName));
 
         StringBuilder fieldMap = new StringBuilder("\r\n");
         StringBuilder privateFields = new StringBuilder();
@@ -290,7 +311,7 @@ public class Model {
                     String paramName = modelName.substring(0, 1).toLowerCase() + modelName.substring(1);
                     publicMembers.append(modelName + " " + paramName);
                     publicMembers.append("){\r\n");
-                    publicMembers.append("        " + fieldName + ".add(" + paramName + ");\r\n");
+                    publicMembers.append("        this." + fieldName + ".add(" + paramName + ");\r\n");
                     publicMembers.append("    }\r\n\r\n");
                 }
             }
@@ -346,10 +367,13 @@ public class Model {
             }
             else{
                 String leftTable = this.tableName;
-                String leftColumn = leftTable + "_ID";
+                String leftColumn = leftTable + "_id";
                 String rightTable = Utils.camelCaseToUnderScore(modelName).toLowerCase();
-                String rightColumn = rightTable + "_ID";
+                String rightColumn = rightTable + "_id";
                 String tableName = leftTable + "_" + rightTable;
+                if (schemaName!=null) tableName = escapedSchemaName + "." + tableName;
+                tableName = tableName.toLowerCase();
+
 
                 String idArray = modelName + "IDs";
                 idArray = idArray.substring(0, 1).toLowerCase() + idArray.substring(1);
@@ -360,39 +384,38 @@ public class Model {
 
               //Update get models (see database constructor)
                 hasMany.append("\r\n\r\n");
-                hasMany.append("          //Set " + fieldName + "\r\n");
-                hasMany.append("            ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
-                hasMany.append("            for (javaxt.sql.Recordset row : conn.getRecordset(\r\n");
-                hasMany.append("                \"select " + rightColumn + " from " + tableName + " where " + leftColumn + "=\"+id)){\r\n");
-                hasMany.append("                " + idArray + ".add(row.getValue(0).toLong());\r\n");
-                hasMany.append("            }\r\n");
-                hasMany.append("            for (long " + id + " : " + idArray + "){\r\n");
-                hasMany.append("                " + fieldName + ".add(new " + modelName + "(" + id + "));\r\n");
-                hasMany.append("            }\r\n\r\n");
+                hasMany.append("              //Set " + fieldName + "\r\n");
+                hasMany.append("                ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
+                hasMany.append("                for (javaxt.sql.Recordset row : conn.getRecordset(\r\n");
+                hasMany.append("                    \"select " + rightColumn + " from " + tableName + " where " + leftColumn + "=\"+id)){\r\n");
+                hasMany.append("                    " + idArray + ".add(row.getValue(0).toLong());\r\n");
+                hasMany.append("                }\r\n");
+                hasMany.append("                for (long " + id + " : " + idArray + "){\r\n");
+                hasMany.append("                    " + fieldName + ".add(new " + modelName + "(" + id + "));\r\n");
+                hasMany.append("                }\r\n\r\n");
 
                 initArrays.append("        " + fieldName + " = new " + fieldType + "();\r\n");
 
 
               //Update save models (see save method)
                 saveModels.append("\r\n");
-                saveModels.append("      //Save " + fieldName + "\r\n");
-                saveModels.append("        ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
-                saveModels.append("        for (" + modelName + " obj : " + fieldName + "){\r\n");
-                saveModels.append("            obj.save();\r\n");
-                saveModels.append("            " + idArray + ".add(obj.getID());\r\n");
-                saveModels.append("        }\r\n");
-                saveModels.append("        for (long " + id + " : " + idArray + "){\r\n");
-                String sql = "\"select * from " + tableName + " where " + leftColumn +
-                "=\"+id\r\n            + \" and " + rightColumn + "=\" + " + id;
-                saveModels.append("            rs.open(" + sql + ", conn, false);\r\n");
-                saveModels.append("            if (rs.EOF){\r\n");
-                saveModels.append("                rs.addNew();\r\n");
-                saveModels.append("                rs.setValue(\"" + leftColumn + "\", id);\r\n");
-                saveModels.append("                rs.setValue(\"" + rightColumn + "\", " + id + ");\r\n");
-                saveModels.append("                rs.update();\r\n");
+                saveModels.append("          //Save " + fieldName + "\r\n");
+                saveModels.append("            ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
+                saveModels.append("            for (" + modelName + " obj : " + fieldName + "){\r\n");
+                saveModels.append("                obj.save();\r\n");
+                saveModels.append("                " + idArray + ".add(obj.getID());\r\n");
                 saveModels.append("            }\r\n");
-                saveModels.append("            rs.close();\r\n");
-                saveModels.append("        }\r\n\r\n");
+                saveModels.append("            for (long " + id + " : " + idArray + "){\r\n");
+                saveModels.append("                rs.open(\"select * from " + tableName + " where " + leftColumn + "=\" + id + \r\n");
+                saveModels.append("                \" and " + rightColumn + "=\" + " + id + ", conn, false);\r\n");
+                saveModels.append("                if (rs.EOF){\r\n");
+                saveModels.append("                    rs.addNew();\r\n");
+                saveModels.append("                    rs.setValue(\"" + leftColumn + "\", id);\r\n");
+                saveModels.append("                    rs.setValue(\"" + rightColumn + "\", " + id + ");\r\n");
+                saveModels.append("                    rs.update();\r\n");
+                saveModels.append("                }\r\n");
+                saveModels.append("                rs.close();\r\n");
+                saveModels.append("            }\r\n\r\n");
             }
 
 
@@ -482,16 +505,16 @@ public class Model {
       //Update the database constructor with hasMany variables
         if (hasMany.length()>0){
             getValues.append("\r\n\r\n");
-            getValues.append("        javaxt.sql.Connection conn = null;\r\n");
-            getValues.append("        try{\r\n");
-            getValues.append("            conn = getConnection(this.getClass());\r\n");
+            getValues.append("            javaxt.sql.Connection conn = null;\r\n");
+            getValues.append("            try{\r\n");
+            getValues.append("                conn = getConnection(this.getClass());\r\n");
             getValues.append(hasMany);
-            getValues.append("            conn.close();\r\n");
-            getValues.append("        }\r\n");
-            getValues.append("        catch(SQLException e){\r\n");
-            getValues.append("            if (conn!=null) conn.close();\r\n");
-            getValues.append("            throw e;\r\n");
-            getValues.append("        }\r\n");
+            getValues.append("                conn.close();\r\n");
+            getValues.append("            }\r\n");
+            getValues.append("            catch(SQLException e){\r\n");
+            getValues.append("                if (conn!=null) conn.close();\r\n");
+            getValues.append("                throw e;\r\n");
+            getValues.append("            }\r\n");
         }
 
 
@@ -619,7 +642,6 @@ public class Model {
 
 
       //Add fields
-        boolean addLastModifiedTrigger = false;
         java.util.ArrayList<String> foreignKeys = new java.util.ArrayList<String>();
         java.util.Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
@@ -660,12 +682,12 @@ public class Model {
 
             String foreignKey = field.getForeignKey();
             if (foreignKey!=null) foreignKeys.add(foreignKey);
-            if (field.isLastModifiedDate()) addLastModifiedTrigger = true;
         }
+
 
       //Add primary key constraint
         str.append("    CONSTRAINT PK_");
-        str.append(tableName.toUpperCase());
+        str.append(this.tableName.toUpperCase());
         str.append(" PRIMARY KEY (ID)");
 
 
@@ -673,53 +695,94 @@ public class Model {
         str.append("\r\n);\r\n\r\n");
 
 
-      //Add last modified trigger as needed. See Writer.write() for the
-      //last_modified() implementation.
-        if (addLastModifiedTrigger){
-            str.append("\r\nCREATE TRIGGER TGR_");
-            str.append(tableName.toUpperCase());
-            str.append("_UPDATE BEFORE INSERT OR UPDATE ON ");
-            str.append(tableName.toUpperCase());
-            str.append("\r\n    FOR EACH ROW EXECUTE PROCEDURE last_modified();\r\n\r\n");
-        }
+        return str.toString();
+    }
 
 
-      //Add diamond tables
-        it = fields.iterator();
+  //**************************************************************************
+  //** getDiamondTableSQL
+  //**************************************************************************
+  /** Returns an SQL script used to generate diamond tables and indexes
+   */
+    public String getDiamondTableSQL(){
+        StringBuilder str = new StringBuilder();
+        java.util.Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
-            if (!field.isArray()) continue;
+            if (field.isArray()){
 
-            String modelName = field.getType().substring(10);
-            modelName = modelName.substring(0, modelName.length()-1);
+                String modelName = field.getType().substring(10);
+                modelName = modelName.substring(0, modelName.length()-1);
 
-            String leftTable = this.tableName.toUpperCase();
-            String leftColumn = leftTable + "_ID";
+                String leftTable = this.tableName.toUpperCase();
+                String leftColumn = leftTable + "_ID";
 
-            String rightTable = Utils.camelCaseToUnderScore(modelName).toUpperCase();
-            String rightColumn = rightTable + "_ID";
+                String rightTable = Utils.camelCaseToUnderScore(modelName).toUpperCase();
+                String rightColumn = rightTable + "_ID";
 
-            String tableName = leftTable + "_" + rightTable;
+                String tableName = leftTable + "_" + rightTable;
+                String foreignKey = "FK_" + tableName;
+                String indexPrefix = "IDX_" + tableName.toUpperCase()+ "_";
+                if (schemaName!=null) tableName = escapedSchemaName + "." + tableName;
 
-            str.append("CREATE TABLE ");
-            str.append(tableName);
-            str.append(" (\r\n    ");
-            str.append(leftColumn);
-            str.append(" BIGINT NOT NULL,\r\n    ");
-            str.append(rightColumn);
-            str.append(" BIGINT NOT NULL,\r\n");
-            str.append("    CONSTRAINT FK_");
-            str.append(tableName);
-            str.append(" FOREIGN KEY (");
-            str.append(leftColumn);
-            str.append(") REFERENCES ");
-            str.append(leftTable);
-            str.append("(ID)\r\n");
-            str.append("        ON DELETE CASCADE ON UPDATE NO ACTION");
-            str.append(");\r\n\r\n");
+                leftTable = escapeTableName(leftTable);
+                if (schemaName!=null) leftTable = escapedSchemaName + "." + leftTable;
+
+                rightTable = escapeTableName(rightTable);
+                if (schemaName!=null) rightTable = escapedSchemaName + "." + rightTable;
+
+
+                str.append("CREATE TABLE ");
+                str.append(tableName);
+                str.append(" (\r\n    ");
+                str.append(leftColumn);
+                str.append(" BIGINT NOT NULL,\r\n    ");
+                str.append(rightColumn);
+                str.append(" BIGINT NOT NULL,\r\n");
+                str.append("    CONSTRAINT ");
+                str.append(foreignKey);
+                str.append(" FOREIGN KEY (");
+                str.append(leftColumn);
+                str.append(") REFERENCES ");
+                str.append(leftTable);
+                str.append("(ID)\r\n");
+                str.append("        ON DELETE CASCADE ON UPDATE NO ACTION\r\n");
+                str.append(");\r\n\r\n");
+
+
+                str.append("ALTER TABLE ");
+                str.append(tableName);
+                str.append(" ADD FOREIGN KEY (");
+                str.append(rightColumn);
+                str.append(") REFERENCES ");
+                str.append(rightTable);
+                str.append("(ID)\r\n");
+                str.append("    ON DELETE CASCADE ON UPDATE NO ACTION;\r\n\r\n");
+
+
+                str.append("CREATE INDEX ");
+                str.append(indexPrefix);
+                str.append(leftColumn);
+                str.append(" ON ");
+                str.append(tableName);
+                str.append("(");
+                str.append(leftColumn);
+                str.append(");\r\n");
+
+
+                str.append("CREATE INDEX ");
+                str.append(indexPrefix);
+                str.append(rightColumn);
+                str.append(" ON ");
+                str.append(tableName);
+                str.append("(");
+                str.append(rightColumn);
+                str.append(");\r\n");
+
+
+                str.append("\r\n");
+            }
         }
-
-
         return str.toString();
     }
 
@@ -743,7 +806,8 @@ public class Model {
                 String foreignKey = field.getForeignKey();
                 if (foreignKey!=null){
                     foreignKey = foreignKey.toUpperCase();
-                    String foreignTable = field.getForeignTable().toUpperCase();
+                    String foreignTable = escapeTableName(field.getForeignTable().toUpperCase());
+                    if (schemaName!=null) foreignTable = escapedSchemaName + "." + foreignTable;
                     String foreignColumn = "ID";
 
                     str.append("ALTER TABLE ");
@@ -751,7 +815,7 @@ public class Model {
                     str.append(" ADD FOREIGN KEY (");
                     str.append(foreignKey);
                     str.append(") REFERENCES ");
-                    str.append(escapeTableName(foreignTable));
+                    str.append(foreignTable);
                     str.append("(");
                     str.append(foreignColumn);
                     str.append(")\r\n");
@@ -759,28 +823,7 @@ public class Model {
                 }
             }
             else{
-
-
-                String modelName = field.getType().substring(10);
-                modelName = modelName.substring(0, modelName.length()-1);
-
-                String leftTable = this.tableName.toUpperCase();
-                String leftColumn = leftTable + "_ID";
-
-                String rightTable = Utils.camelCaseToUnderScore(modelName).toUpperCase();
-                String rightColumn = rightTable + "_ID";
-
-                String tableName = leftTable + "_" + rightTable;
-
-
-                str.append("ALTER TABLE ");
-                str.append(tableName);
-                str.append(" ADD FOREIGN KEY (");
-                str.append(rightColumn);
-                str.append(") REFERENCES ");
-                str.append(escapeTableName(rightTable));
-                str.append("(ID)\r\n");
-                str.append("    ON DELETE CASCADE ON UPDATE NO ACTION;\r\n\r\n");
+                //Handled by getDiamondTableSQL()
             }
         }
         return str.toString();
@@ -828,10 +871,50 @@ public class Model {
                 }
             }
             else{
-                //TODO
+                //Handled by getDiamondTableSQL()
             }
         }
         return str.toString();
+    }
+
+
+  //**************************************************************************
+  //** getTriggerSQL
+  //**************************************************************************
+  /** Returns an SQL script used to generate triggers
+   */
+    public String getTriggerSQL(){
+        StringBuilder str = new StringBuilder();
+
+
+      //Add last modified trigger as needed. See Writer.write() for the
+      //last_modified() implementation.
+        if (hasLastModifiedField()){
+            str.append("CREATE TRIGGER TGR_");
+            str.append(this.tableName.toUpperCase());
+            str.append("_UPDATE BEFORE INSERT OR UPDATE ON ");
+            str.append(escapedTableName);
+            str.append("\r\n    FOR EACH ROW EXECUTE PROCEDURE last_modified();\r\n\r\n");
+        }
+
+
+        return str.toString();
+    }
+
+
+  //**************************************************************************
+  //** hasLastModifiedField
+  //**************************************************************************
+  /** Returns true if the model contains a lastModified date field.
+   */
+    protected boolean hasLastModifiedField(){
+        java.util.Iterator<Field> it = fields.iterator();
+        while (it.hasNext()){
+            Field field = it.next();
+            if (field.isArray()) continue;
+            if (field.isLastModifiedDate()) return true;
+        }
+        return false;
     }
 
 
@@ -850,8 +933,9 @@ public class Model {
   //**************************************************************************
   /** Returns a sql compatible table name
    */
-    private String escapeTableName(String tableName){
-        if (tableName.equalsIgnoreCase("user")){ //and db is postgres
+    protected String escapeTableName(String tableName){
+        if (tableName==null) return null;
+        if (tableName.equalsIgnoreCase("user") && schemaName==null){ //and db is postgres
             return "\"" + tableName.toLowerCase() + "\"";
         }
         else{

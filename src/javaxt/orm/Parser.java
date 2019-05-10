@@ -14,9 +14,10 @@ import javaxt.json.*;
 public class Parser {
 
     private String packageName;
+    private String schemaName;
     private Model[] models;
-    
-    
+
+
   //**************************************************************************
   //** Constructor
   //**************************************************************************
@@ -24,10 +25,10 @@ public class Parser {
    *  a json document or a javascript.
    */
     public Parser(String input) throws Exception {
-        if (input==null || input.trim().isEmpty()){ 
+        if (input==null || input.trim().isEmpty()){
             throw new IllegalArgumentException("Parser input is empty");
         }
-        
+
         try{
             init(new JSONObject(input));
         }
@@ -35,8 +36,8 @@ public class Parser {
             init(parseJavaScript(input));
         }
     }
-    
-    
+
+
   //**************************************************************************
   //** Constructor
   //**************************************************************************
@@ -46,7 +47,7 @@ public class Parser {
         init(json);
     }
 
-    
+
   //**************************************************************************
   //** getModels
   //**************************************************************************
@@ -55,9 +56,9 @@ public class Parser {
     public Model[] getModels(){
         return models;
     }
-    
-    
-    
+
+
+
   //**************************************************************************
   //** init
   //**************************************************************************
@@ -65,19 +66,20 @@ public class Parser {
    */
     private void init(JSONObject json){
         packageName = json.get("package").toString();
+        schemaName = json.get("schema").toString();
         JSONObject models = json.get("models").toJSONObject();
-        
+
         java.util.ArrayList<Model> arr = new java.util.ArrayList<Model>();
         for (String modelName : models.keySet()){
-            Model model = new Model(modelName, packageName, models.get(modelName).toJSONObject());
+            Model model = new Model(modelName, packageName, schemaName, models.get(modelName).toJSONObject());
             arr.add(model);
         }
-        
-        
+
+
         this.models = arr.toArray(new Model[arr.size()]);
     }
 
-    
+
   //**************************************************************************
   //** parseJavaScript
   //**************************************************************************
@@ -85,31 +87,36 @@ public class Parser {
    */
     private JSONObject parseJavaScript(String js) throws Exception {
         JSONObject output = new JSONObject();
-        
-        
+
+
       //Instantiate ScriptEngine
         ScriptEngineManager factory = new ScriptEngineManager();
         ScriptEngine engine = factory.getEngineByName("nashorn");
-        
-        
+
+
       //Extract variables
         ScriptContext ctx = new SimpleScriptContext();
         ctx.setBindings(engine.createBindings(), ScriptContext.ENGINE_SCOPE);
         engine.eval(js, ctx);
         Object packageName = ctx.getAttribute("package");
+        Object schemaName = ctx.getAttribute("schema");
         Object models = ctx.getAttribute("models");
-        
-        
+
+
       //Add package to output
         output.set("package", packageName.toString());
+
+
+      //Add package to output
+        if (schemaName!=null) output.set("schema", schemaName.toString());
         
-        
+
       //Stringify models and convert to json
         ScriptObjectMirror json = (ScriptObjectMirror) engine.eval("JSON");
         String str = json.callMember("stringify", models).toString();
         output.set("models", new JSONObject(str));
-        
-        
+
+
       //Return JSON
         return output;
     }
