@@ -72,19 +72,28 @@ public class Model {
         JSONArray constraints = modelInfo.get("constraints").toJSONArray();
         if (constraints!=null)
         for (int i=0; i<constraints.length(); i++){
-            JSONObject json = constraints.get(i).toJSONObject();
-            String fieldName = json.get("name").toString();
-            Boolean isRequired = json.get("required").toBoolean();
-            if (isRequired==null) isRequired = json.get("nullable").toBoolean();
-            Boolean isUnique = json.get("unique").toBoolean();
-            Integer length = json.get("length").toInteger();
-            if (length==null) length = json.get("size").toInteger();
+            JSONObject constraint = constraints.get(i).toJSONObject();
+            String fieldName = constraint.get("name").toString();
+            Boolean isRequired = constraint.get("required").toBoolean();
+            if (isRequired==null) isRequired = constraint.get("nullable").toBoolean();
+            Boolean isUnique = constraint.get("unique").toBoolean();
+            Integer length = constraint.get("length").toInteger();
+            if (length==null) length = constraint.get("size").toInteger();
 
             for (Field field : fields){
                 if (field.getName().equals(fieldName)){
                     if (isRequired!=null) field.isRequired(isRequired);
                     if (isUnique!=null) field.isUnique(isUnique);
                     if (length!=null) field.setLength(length);
+
+
+                    ForeignKey foreignKey = field.getForeignKey();
+                    if (foreignKey!=null){
+                        if (constraint.has("onDelete")){
+                            foreignKey.onDelete(constraint.get("onDelete").toString());
+                        }
+                    }
+
                     break;
                 }
             }
@@ -453,7 +462,9 @@ public class Model {
                         }
                     }
                 }
-                else{
+                else{ //Model
+
+                    //if (json.has("account")){...
                     getJson.append("        if (json.has(\"");
                     getJson.append(fieldName);
                     getJson.append("\")){\r\n            ");
@@ -463,6 +474,26 @@ public class Model {
                     getJson.append("(json.get(\"");
                     getJson.append(fieldName);
                     getJson.append("\").toJSONObject());\r\n");
+                    getJson.append("        }\r\n");
+
+
+                    //if (json.has("accountID")){...
+                    getJson.append("        else if (json.has(\"");
+                    getJson.append(fieldName);
+                    getJson.append("ID\")){\r\n");
+                    getJson.append("            ");
+                    getJson.append("try{\r\n");
+                    getJson.append("                ");
+                    getJson.append(fieldName);
+                    getJson.append(" = new ");
+                    getJson.append(fieldType);
+                    getJson.append("(json.get(\"");
+                    getJson.append(fieldName);
+                    getJson.append("ID\").toLong());\r\n");
+                    getJson.append("            ");
+                    getJson.append("}\r\n");
+                    getJson.append("            ");
+                    getJson.append("catch(Exception e){}\r\n");
                     getJson.append("        }\r\n");
                 }
             }
@@ -680,8 +711,8 @@ public class Model {
             str.append(",");
             str.append("\r\n");
 
-            String foreignKey = field.getForeignKey();
-            if (foreignKey!=null) foreignKeys.add(foreignKey);
+            ForeignKey foreignKey = field.getForeignKey();
+            if (foreignKey!=null) foreignKeys.add(foreignKey.getColumnName());
         }
 
 
@@ -803,23 +834,25 @@ public class Model {
         while (it.hasNext()){
             Field field = it.next();
             if (!field.isArray()){
-                String foreignKey = field.getForeignKey();
+                ForeignKey foreignKey = field.getForeignKey();
                 if (foreignKey!=null){
-                    foreignKey = foreignKey.toUpperCase();
-                    String foreignTable = escapeTableName(field.getForeignTable().toUpperCase());
+                    String columnName = foreignKey.getColumnName().toUpperCase();
+                    String foreignTable = escapeTableName(foreignKey.getForeignTable().toUpperCase());
                     if (schemaName!=null) foreignTable = escapedSchemaName + "." + foreignTable;
                     String foreignColumn = "ID";
 
                     str.append("ALTER TABLE ");
                     str.append(escapedTableName);
                     str.append(" ADD FOREIGN KEY (");
-                    str.append(foreignKey);
+                    str.append(columnName);
                     str.append(") REFERENCES ");
                     str.append(foreignTable);
                     str.append("(");
                     str.append(foreignColumn);
                     str.append(")\r\n");
-                    str.append("    ON DELETE NO ACTION ON UPDATE NO ACTION;\r\n\r\n");  //ON DELETE CASCADE?
+                    str.append("    ON DELETE ");
+                    str.append(foreignKey.onDelete());
+                    str.append(" ON UPDATE NO ACTION;\r\n\r\n");
                 }
             }
             else{
@@ -843,17 +876,17 @@ public class Model {
         while (it.hasNext()){
             Field field = it.next();
             if (!field.isArray()){
-                String foreignKey = field.getForeignKey();
+                ForeignKey foreignKey = field.getForeignKey();
                 if (foreignKey!=null){
-                    foreignKey = foreignKey.toUpperCase();
-                    String foreignTable = field.getForeignTable().toUpperCase();
+                    String columnName = foreignKey.getColumnName().toUpperCase();
+                    String foreignTable = foreignKey.getForeignTable().toUpperCase();
                     str.append("CREATE INDEX ");
                     str.append(indexPrefix);
                     str.append(foreignTable);
                     str.append(" ON ");
                     str.append(escapedTableName);
                     str.append("(");
-                    str.append(foreignKey);
+                    str.append(columnName);
                     str.append(");\r\n");
                 }
                 else{

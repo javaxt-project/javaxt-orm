@@ -18,8 +18,8 @@ public class Field {
     private boolean unique = false;
     private Object defaultValue = null;
     private Integer length;
-    private String foreignKey;
-    private String foreignTable;
+    private ForeignKey foreignKey;
+
 
   //**************************************************************************
   //** Constructor
@@ -86,8 +86,7 @@ public class Field {
             else{ //Single model
 
                 columnName = columnName + "_id";
-                foreignKey = columnName;
-                foreignTable = Utils.camelCaseToUnderScore(type);
+                foreignKey = new ForeignKey(columnName, type);
                 columnType = "bigint";
             }
 
@@ -115,12 +114,8 @@ public class Field {
         return columnType;
     }
 
-    public String getForeignKey(){
+    public ForeignKey getForeignKey(){
         return foreignKey;
-    }
-
-    public String getForeignTable(){
-        return foreignTable;
     }
 
     public boolean isLastModifiedDate(){
