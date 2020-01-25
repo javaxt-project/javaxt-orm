@@ -461,6 +461,13 @@ public class Model {
                             getJson.append("();\r\n");
                         }
                     }
+                    else{
+                        getJson.append("        this.set");
+                        getJson.append(methodName);
+                        getJson.append("(json.get(\"");
+                        getJson.append(columnName);
+                        getJson.append("\").toString());\r\n");
+                    }
                 }
                 else{ //Model
 
