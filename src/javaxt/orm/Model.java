@@ -31,12 +31,16 @@ public class Model {
         this.fields = new java.util.ArrayList<Field>();
 
         this.packageName = packageName;
-
         this.tableName = Utils.camelCaseToUnderScore(name).toLowerCase();
-        this.escapedTableName = escapeTableName(tableName);
         this.schemaName = schemaName;
-        this.escapedSchemaName = escapeTableName(schemaName);
-        if (schemaName!=null){
+
+
+        if (schemaName==null){
+            escapedTableName = escapeTableName(tableName);
+        }
+        else{
+            escapedTableName = tableName.toUpperCase();
+            escapedSchemaName = escapeTableName(schemaName);
             escapedTableName = escapedSchemaName + "." + escapedTableName;
         }
 
@@ -379,9 +383,14 @@ public class Model {
                 String leftColumn = leftTable + "_id";
                 String rightTable = Utils.camelCaseToUnderScore(modelName).toLowerCase();
                 String rightColumn = rightTable + "_id";
+
+                //Special case for when a model hasMany of itself
+                if (leftTable.equals(rightTable))  rightColumn = rightTable + "_id2";
+
                 String tableName = leftTable + "_" + rightTable;
                 if (schemaName!=null) tableName = escapedSchemaName + "." + tableName;
                 tableName = tableName.toLowerCase();
+
 
 
                 String idArray = modelName + "IDs";
@@ -749,6 +758,8 @@ public class Model {
             Field field = it.next();
             if (field.isArray()){
 
+
+
                 String modelName = field.getType().substring(10);
                 modelName = modelName.substring(0, modelName.length()-1);
 
@@ -758,7 +769,14 @@ public class Model {
                 String rightTable = Utils.camelCaseToUnderScore(modelName).toUpperCase();
                 String rightColumn = rightTable + "_ID";
 
-                String tableName = leftTable + "_" + rightTable;
+                //Special case for when a model hasMany of itself
+                if (leftTable.equals(rightTable)) rightColumn = rightTable + "_ID2";
+
+
+                //String tableName = leftTable + "_" + rightTable;
+                String tableName = leftTable + "_" + field.getColumnName().toUpperCase();
+
+
                 String foreignKey = "FK_" + tableName;
                 String indexPrefix = "IDX_" + tableName.toUpperCase()+ "_";
                 if (schemaName!=null) tableName = escapedSchemaName + "." + tableName;

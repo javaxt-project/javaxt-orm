@@ -9,10 +9,10 @@ package javaxt.orm;
  ******************************************************************************/
 
 public class Utils {
-    
+
     private Utils(){}
-    
-    
+
+
   //**************************************************************************
   //** camelCaseToUnderScore
   //**************************************************************************
@@ -58,9 +58,9 @@ public class Utils {
             begin=false;
         }
         return result.toString().toLowerCase();
-    }    
-    
-    
+    }
+
+
   //**************************************************************************
   //** underscoreToCamelCase
   //**************************************************************************
@@ -75,19 +75,19 @@ public class Utils {
             m.appendReplacement(sb, m.group(1).toUpperCase());
         }
         m.appendTail(sb);
-        
+
         String str = sb.toString();
         if (str.endsWith("Id") && input.toLowerCase().endsWith("_id")){
             str = str.substring(0, str.length()-2) + "ID";
         }
         return str;
     }
-    
-    
+
+
   //**************************************************************************
   //** capitalize
   //**************************************************************************
-  /** Used to capitalize the first letter in the given string. 
+  /** Used to capitalize the first letter in the given string.
    */
     public static String capitalize(String fieldName){
         return fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
