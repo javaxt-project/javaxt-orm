@@ -1,5 +1,6 @@
 package javaxt.orm;
 import javaxt.json.*;
+import java.util.HashMap;
 
 //******************************************************************************
 //**  Model Class
@@ -19,6 +20,7 @@ public class Model {
     private String packageName;
     private String schemaName;
     private String escapedSchemaName;
+    private HashMap<String, String> options;
 
 
   //**************************************************************************
@@ -26,13 +28,13 @@ public class Model {
   //**************************************************************************
   /** Creates a new instance of this class.
    */
-    protected Model(String modelName, String packageName, String schemaName, JSONObject modelInfo){
+    protected Model(String modelName, JSONObject modelInfo, String packageName, HashMap<String, String> options){
         this.name = modelName;
         this.fields = new java.util.ArrayList<Field>();
-
+        this.options = options;
         this.packageName = packageName;
         this.tableName = Utils.camelCaseToUnderScore(name).toLowerCase();
-        this.schemaName = schemaName;
+        this.schemaName = options.get("schema");
 
 
         if (schemaName==null){
@@ -83,13 +85,14 @@ public class Model {
             Boolean isUnique = constraint.get("unique").toBoolean();
             Integer length = constraint.get("length").toInteger();
             if (length==null) length = constraint.get("size").toInteger();
+            Integer srid = constraint.get("srid").toInteger();
 
             for (Field field : fields){
                 if (field.getName().equals(fieldName)){
                     if (isRequired!=null) field.isRequired(isRequired);
                     if (isUnique!=null) field.isUnique(isUnique);
                     if (length!=null) field.setLength(length);
-
+                    if (srid!=null) field.setSRID(srid);
 
                     ForeignKey foreignKey = field.getForeignKey();
                     if (foreignKey!=null){
@@ -207,8 +210,10 @@ public class Model {
             if (fieldType.equals("Date")) includes.add("javaxt.utils.Date");
             if (fieldType.equals("BigDecimal")) includes.add("java.math.BigDecimal");
             if (fieldType.equals("Geometry")){
-                includes.add("com.vividsolutions.jts.geom.Geometry");
-                includes.add("com.vividsolutions.jts.io.WKTReader");
+                String jts = options.get("jts");
+                if (jts==null) jts = "com.vividsolutions.jts";
+                includes.add(jts+".geom.Geometry");
+                includes.add(jts+".io.WKTReader");
             }
 
 
@@ -348,11 +353,11 @@ public class Model {
                         getValues.append("\").toByteArray();\r\n");
                     }
                     else if (fieldType.equals("Geometry")){
-                        getValues.append("            this.");
+                        getValues.append("            try{this.");
                         getValues.append(fieldName);
                         getValues.append(" = new WKTReader().read(getValue(rs, \"");
                         getValues.append(columnName);
-                        getValues.append("\").toString());\r\n");
+                        getValues.append("\").toString());}catch(Exception e){}\r\n");
                     }
                     else{
                         getValues.append("            this.");
@@ -773,8 +778,8 @@ public class Model {
                 if (leftTable.equals(rightTable)) rightColumn = rightTable + "_ID2";
 
 
-                //String tableName = leftTable + "_" + rightTable;
-                String tableName = leftTable + "_" + field.getColumnName().toUpperCase();
+                String tableName = leftTable + "_" + rightTable;
+                //String tableName = leftTable + "_" + field.getColumnName().toUpperCase();
 
 
                 String foreignKey = "FK_" + tableName;

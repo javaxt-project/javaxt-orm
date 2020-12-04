@@ -68,7 +68,11 @@ public class Field {
         }
         else if (type.equalsIgnoreCase("geo")){
             type = "Geometry";
-            columnType = "geometry(Geometry,4326)"; //PostgreSQL specific
+            columnType = "geometry(Geometry,4326)";
+        }
+        else if (type.equalsIgnoreCase("geometry")){
+            type = "Geometry";
+            columnType = "geometry(GeometryZ)";
         }
         else if (type.equalsIgnoreCase("password")){
             //type = "String";
@@ -183,6 +187,17 @@ public class Field {
                 columnType = "CHAR(" + length + ")";
                 this.length = length;
             }
+        }
+    }
+
+
+    public void setSRID(Integer srid){
+        if (type.equalsIgnoreCase("Geometry")){
+            boolean hasZ = columnType.contains("Z");
+            columnType = "geometry(Geometry";
+            if (hasZ) columnType+="Z";
+            if (srid!=null) columnType+=","+srid;
+            columnType+=")";
         }
     }
 }

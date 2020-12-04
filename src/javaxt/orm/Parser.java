@@ -2,6 +2,7 @@ package javaxt.orm;
 import javax.script.*;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import javaxt.json.*;
+import java.util.HashMap;
 
 //******************************************************************************
 //**  Parser Class
@@ -13,9 +14,8 @@ import javaxt.json.*;
 
 public class Parser {
 
-    private String packageName;
-    private String schemaName;
     private Model[] models;
+    private static String[] optionalVars = new String[]{"schema", "jts"};
 
 
   //**************************************************************************
@@ -65,13 +65,17 @@ public class Parser {
   /** Used to parse a json document containing models and a package name.
    */
     private void init(JSONObject json){
-        packageName = json.get("package").toString();
-        schemaName = json.get("schema").toString();
+        String packageName = json.get("package").toString();
         JSONObject models = json.get("models").toJSONObject();
+        HashMap<String, String> options = new HashMap<String, String>();
+        for (String key : optionalVars){
+            String val = json.get(key).toString();
+            if (val!=null) options.put(key, val);
+        }
 
         java.util.ArrayList<Model> arr = new java.util.ArrayList<Model>();
         for (String modelName : models.keySet()){
-            Model model = new Model(modelName, packageName, schemaName, models.get(modelName).toJSONObject());
+            Model model = new Model(modelName, models.get(modelName).toJSONObject(), packageName, options);
             arr.add(model);
         }
 
@@ -98,23 +102,26 @@ public class Parser {
         ScriptContext ctx = new SimpleScriptContext();
         ctx.setBindings(engine.createBindings(), ScriptContext.ENGINE_SCOPE);
         engine.eval(js, ctx);
+
+
+      //Add package name to output
         Object packageName = ctx.getAttribute("package");
-        Object schemaName = ctx.getAttribute("schema");
-        Object models = ctx.getAttribute("models");
-
-
-      //Add package to output
         output.set("package", packageName.toString());
 
 
-      //Add package to output
-        if (schemaName!=null) output.set("schema", schemaName.toString());
-        
+      //Add options to output
+        for (String key : optionalVars){
+            Object schemaName = ctx.getAttribute(key);
+            if (schemaName!=null) output.set(key, schemaName.toString());
+        }
+
 
       //Stringify models and convert to json
+        Object models = ctx.getAttribute("models");
         ScriptObjectMirror json = (ScriptObjectMirror) engine.eval("JSON");
         String str = json.callMember("stringify", models).toString();
         output.set("models", new JSONObject(str));
+
 
 
       //Return JSON
