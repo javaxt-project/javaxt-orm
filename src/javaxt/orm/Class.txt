@@ -20,9 +20,9 @@ public class ${modelName} extends javaxt.sql.Model {
   //** Constructor
   //**************************************************************************
     public ${modelName}(){
-        super("${tableName}", new java.util.HashMap<String, String>() {{
+        super("${tableName}", java.util.Map.ofEntries(
             ${fieldMap}
-        }});
+        ));
         ${initArrays}
     }
 

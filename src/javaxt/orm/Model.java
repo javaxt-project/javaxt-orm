@@ -195,7 +195,8 @@ public class Model {
         java.util.TreeSet<String> includes = new java.util.TreeSet<String>();
 
 
-        for (Field field : fields){
+        for (int i=0; i<fields.size(); i++){
+            Field field = fields.get(i);
             String fieldName = field.getName();
             String fieldType = field.getType();
             String methodName = Utils.capitalize(fieldName);
@@ -217,12 +218,26 @@ public class Model {
             }
 
 
+            /* For Java 8 and below
           //Append field to the fieldMap
             fieldMap.append("            put(\"");
             fieldMap.append(fieldName);
             fieldMap.append("\", \"");
             fieldMap.append(columnName);
             fieldMap.append("\");\r\n");
+            */
+
+
+
+          //Append field to the fieldMap
+            fieldMap.append("            java.util.Map.entry(\"");
+            fieldMap.append(fieldName);
+            fieldMap.append("\", \"");
+            fieldMap.append(columnName);
+            fieldMap.append("\")");
+            if (i<fields.size()-1) fieldMap.append(",");
+            fieldMap.append("\r\n");
+
 
 
 
@@ -428,17 +443,19 @@ public class Model {
                 saveModels.append("                obj.save();\r\n");
                 saveModels.append("                " + idArray + ".add(obj.getID());\r\n");
                 saveModels.append("            }\r\n");
+
+
+                saveModels.append("\r\n");
+                saveModels.append("            conn.execute(\"delete from " + tableName + " where " + leftColumn + "=\" + id);\r\n");
+                saveModels.append("            rs.open(\"select * from " + tableName + " where " + leftColumn + "=\" + id, conn, false);\r\n");
                 saveModels.append("            for (long " + id + " : " + idArray + "){\r\n");
-                saveModels.append("                rs.open(\"select * from " + tableName + " where " + leftColumn + "=\" + id + \r\n");
-                saveModels.append("                \" and " + rightColumn + "=\" + " + id + ", conn, false);\r\n");
-                saveModels.append("                if (rs.EOF){\r\n");
-                saveModels.append("                    rs.addNew();\r\n");
-                saveModels.append("                    rs.setValue(\"" + leftColumn + "\", id);\r\n");
-                saveModels.append("                    rs.setValue(\"" + rightColumn + "\", " + id + ");\r\n");
-                saveModels.append("                    rs.update();\r\n");
-                saveModels.append("                }\r\n");
-                saveModels.append("                rs.close();\r\n");
-                saveModels.append("            }\r\n\r\n");
+                saveModels.append("                rs.addNew();\r\n");
+                saveModels.append("                rs.setValue(\"" + leftColumn + "\", id);\r\n");
+                saveModels.append("                rs.setValue(\"" + rightColumn + "\", " + id + ");\r\n");
+                saveModels.append("                rs.update();\r\n");
+                saveModels.append("            }\r\n");
+                saveModels.append("            rs.close();\r\n");
+                saveModels.append("\r\n");
             }
 
 
