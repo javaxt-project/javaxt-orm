@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+
+        <!-- Ant-style directory layout -->
+        <src.dir>src</src.dir>
+
+    </properties>
+
+  <!-- =========================================================== -->
+  <!--     Module Description                                      -->
+  <!-- =========================================================== -->
+    <groupId>javaxt</groupId>
+    <artifactId>javaxt-orm</artifactId>
+    <version>dev</version>
+    <packaging>jar</packaging>
+
+
+  <!-- =========================================================== -->
+  <!--     Dependency Management                                   -->
+  <!-- =========================================================== -->
+    <repositories>
+      <repository>
+        <id>javaxt.com</id>
+        <url>https://www.javaxt.com/maven</url>
+      </repository>
+    </repositories>
+    <dependencies>
+      <dependency>
+        <groupId>javaxt</groupId>
+        <artifactId>javaxt-core</artifactId>
+        <version>1.12.1</version>
+      </dependency>
+    </dependencies>
+
+
+
+  <!-- =========================================================== -->
+  <!--     Build Info                                              -->
+  <!-- =========================================================== -->
+    <build>
+
+        <sourceDirectory>${src.dir}</sourceDirectory>
+
+
+        <plugins>
+
+            <!-- Copy dependencies into the lib folder -->
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <!-- Create main app -->
+            <plugin>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>lib/</classpathPrefix>
+                            <mainClass>javaxt.orm.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+
+            <!-- copy jars to the dist directory -->
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-antrun-plugin</artifactId>
+              <version>1.8</version>
+              <executions>
+                <execution>
+                  <phase>install</phase>
+                  <configuration>
+                    <target>
+                      <move file="${project.build.directory}/${project.artifactId}-${project.version}.jar" todir="${project.basedir}/dist" />
+                      <move todir="${project.basedir}/dist/lib" >
+                          <fileset dir="${project.build.directory}/lib" />
+                      </move>
+                    </target>
+                  </configuration>
+                  <goals>
+                    <goal>run</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+
+
+
+      </plugins>
+    </build>
+</project>
