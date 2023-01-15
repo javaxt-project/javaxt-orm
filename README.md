@@ -97,7 +97,8 @@ The javaxt-orm library requires Java 8 or higher for Javascript parsing and java
 The javaxt-orm library generates Java code that extends/implements javaxt.sql.Model class. 
 It also calls java.util.Map.ofEntries which was introduced in Java 9. 
 Therefore, you will need both javaxt-core and Java 9 (or higher) to use the generated code
-in your project.
+in your project. In addition, you will need JTS if you include a `geo` or `geometry` type.
+Last but not least, you will need to include a JDBC driver in your project for persistance.
 
 
 ## How to Use With Java 15 and Up
