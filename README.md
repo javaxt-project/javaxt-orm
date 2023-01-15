@@ -5,26 +5,70 @@ Command line utility for generating Java code and DDL from a set of models defin
 This is not intended to be a full fledged ORM framework. Instead, the goal is to help jumpstart new projects by
 providing a simple utility for stubbing out code and SQL.
 
+## Command Line Interface
+The javaxt-orm library provides a command line interface that can be used to generate Java classes 
+and schema. All you need to do is provide a input model and an output directory. Example:
+```
+java -jar javaxt-orm.jar /path/to/model.js /output
+```
+
+## Model Input
+Below is a simple example of an input Javascript file with an Address model. 
+```javascript
+var package = "com.example.models";
+var models = {
+    Address: {
+        fields: [
+            {name: 'street',        type: 'string'},
+            {name: 'city',          type: 'string'},
+            {name: 'state',         type: 'string'},
+            {name: 'postalCode',    type: 'string'},
+            {name: 'coordinates',   type: 'geo'}
+        ]
+    }
+}
+```
+
+The examples folder contains a few sample models that you can use as reference.
 
 
 ## Model mapping and supported types
 
 
-Field Type	| Java Type		| Database Type
-------------|-------------|----------------------------------------------
-text		| String		| text (or varchar if there is a length constraint)
-int		| Integer		| integer
-long		| Long			| bigint
-float		| Double		| double precision
-decimal		| BigDecimal		| numeric
-date		| Date			| timestamp with time zone
-boolean		| Boolean		| Boolean
-binary		| byte[]		| bytea
-json		| JSONObject		| jasonb
-geo		| Object		| geometry(Geometry,4326)
-password	| String (bcrypt hash)	| text (bcrypt hash)
+Field Type	| Java Type		| Database Type   | Comments
+------------|-------------|-----------------|----------------------------
+int		| Integer		| integer |
+long		| Long			| bigint |
+float		| Double		| double precision |
+double		| Double		| double precision |
+decimal		| BigDecimal		| numeric |
+numeric		| BigDecimal		| numeric |
+text		| String		| text or varchar | varchar if there is a length constraint
+string		| String		| text or varchar | varchar if there is a length constraint
+char		| String		| char(1) |
+boolean		| Boolean		| Boolean |
+date		| Date			| timestamp with time zone |
+binary		| byte[]		| bytea |
+json		| JSONObject		| jasonb |
+geo		| Geometry		| geometry(Geometry,4326) | For lat/lon geographic data
+geometry		| Geometry		| geometry(GeometryZ) | For x,y,z data
+password	| String | text | Stores bcrypt hash
 
+In addition to these standard field types, you can specify a model as a `type`. Example:
 
+```javascript
+{
+  Contact: {
+     fields: [
+        {name: 'name', type: 'string'},
+        {name: 'address', type: 'Address'}
+     ]
+  },
+  Address: {
+      ...
+  }  
+}
+```
 
 
 ## Supported field constraints
