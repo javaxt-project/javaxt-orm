@@ -75,10 +75,10 @@ In addition to these standard field types, you can specify a model as a `type`. 
 
 Constraint Key	| Type		| Comments
 ----------------|---------|----------------------------------------------
-required	| boolean	| Can also use "nullable" keyword.
-length		| int		| Only applies to "text" field types. Reassigns the database type to varchar.
+required	| boolean	| If true, adds a "NOT NULL" constraint to the field. Can also use "nullable" keyword.
+length		| int		| Only applies to "text" field types. When specified, reassigns the database type to varchar.
 unique		| boolean	| Should not be applied to "text" fields without a length constraint.
-
+onDelete    | string    | Only applies to fields with models. Options include "cascade" and "no action" (default).
 
 ## Misc
 
