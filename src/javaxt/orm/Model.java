@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 public class Model {
 
     private String name;
-    private HashSet<String> implementations;
+    private TreeSet<String> implementations;
     private ArrayList<Field> fields;
     private static final String template = getTemplate();
     private String tableName;
@@ -32,7 +32,7 @@ public class Model {
    */
     protected Model(String modelName, JSONObject modelInfo, String packageName, HashMap<String, String> options){
         this.name = modelName;
-        this.implementations = new HashSet<>();
+        this.implementations = new TreeSet<>();
         this.fields = new ArrayList<>();
         this.options = options;
         this.packageName = packageName;
@@ -207,7 +207,7 @@ public class Model {
         StringBuilder hasMany = new StringBuilder();
         StringBuilder initArrays = new StringBuilder();
         String getLastModified = "";
-        java.util.TreeSet<String> includes = new java.util.TreeSet<>();
+        TreeSet<String> includes = new TreeSet<>();
 
 
         for (int i=0; i<fields.size(); i++){
@@ -599,15 +599,14 @@ public class Model {
                 getJson.append("        if (json.has(\"");
                 getJson.append(fieldName);
                 getJson.append("\")){\r\n");
-                getJson.append("            JSONArray _");
+                getJson.append("            for (JSONValue _");
                 getJson.append(fieldName);
-                getJson.append(" = json.get(\"");
+                getJson.append(" : json.get(\"");
                 getJson.append(fieldName);
-                getJson.append("\").toJSONArray();\r\n");
-                getJson.append("            for (int i=0; i<_" + fieldName + ".length(); i++){\r\n");
+                getJson.append("\").toJSONArray()){\r\n");
                 getJson.append("                ");
                 getJson.append(fieldName);
-                getJson.append(".add(new " + modelName + "(_" + fieldName + ".get(i).toJSONObject()));\r\n");
+                getJson.append(".add(new " + modelName + "(_" + fieldName + ".toJSONObject()));\r\n");
                 getJson.append("            }\r\n");
                 getJson.append("        }\r\n\r\n");
             }
@@ -759,8 +758,8 @@ public class Model {
 
 
       //Add fields
-        java.util.ArrayList<String> foreignKeys = new java.util.ArrayList<>();
-        java.util.Iterator<Field> it = fields.iterator();
+        ArrayList<String> foreignKeys = new ArrayList<>();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (field.isArray()) continue;
@@ -823,7 +822,7 @@ public class Model {
    */
     public String getDiamondTableSQL(){
         StringBuilder str = new StringBuilder();
-        java.util.Iterator<Field> it = fields.iterator();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (field.isArray()){
@@ -925,7 +924,7 @@ public class Model {
    */
     public String getForeignKeySQL(){
         StringBuilder str = new StringBuilder();
-        java.util.Iterator<Field> it = fields.iterator();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (!field.isArray()){
@@ -967,7 +966,7 @@ public class Model {
     public String getIndexSQL(){
         StringBuilder str = new StringBuilder();
         String indexPrefix = "IDX_" + tableName.toUpperCase()+ "_";
-        java.util.Iterator<Field> it = fields.iterator();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (!field.isArray()){
@@ -1036,7 +1035,7 @@ public class Model {
   /** Returns true if the model contains a lastModified date field.
    */
     protected boolean hasLastModifiedField(){
-        java.util.Iterator<Field> it = fields.iterator();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (field.isArray()) continue;
