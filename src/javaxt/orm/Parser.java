@@ -1,8 +1,14 @@
 package javaxt.orm;
-import javax.script.*;
-import jdk.nashorn.api.scripting.ScriptObjectMirror;
+
+import java.util.*;
 import javaxt.json.*;
-import java.util.HashMap;
+
+//Scripting includes
+import javax.script.*;
+import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
+import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
+import org.openjdk.nashorn.api.scripting.NashornScriptEngine;
+
 
 //******************************************************************************
 //**  Parser Class
@@ -67,13 +73,13 @@ public class Parser {
     private void init(JSONObject json){
         String packageName = json.get("package").toString();
         JSONObject models = json.get("models").toJSONObject();
-        HashMap<String, String> options = new HashMap<String, String>();
+        HashMap<String, String> options = new HashMap<>();
         for (String key : optionalVars){
             String val = json.get(key).toString();
             if (val!=null) options.put(key, val);
         }
 
-        java.util.ArrayList<Model> arr = new java.util.ArrayList<Model>();
+        ArrayList<Model> arr = new ArrayList<>();
         for (String modelName : models.keySet()){
             Model model = new Model(modelName, models.get(modelName).toJSONObject(), packageName, options);
             arr.add(model);
@@ -94,8 +100,9 @@ public class Parser {
 
 
       //Instantiate ScriptEngine
-        ScriptEngineManager factory = new ScriptEngineManager();
-        ScriptEngine engine = factory.getEngineByName("nashorn");
+        String[] options = new String[] { "--language=es6" };
+        NashornScriptEngineFactory factory = new NashornScriptEngineFactory();
+        NashornScriptEngine engine = (NashornScriptEngine) factory.getScriptEngine(options);
 
 
       //Extract variables
