@@ -1,6 +1,7 @@
 package javaxt.orm;
 import javaxt.json.*;
-import java.util.HashMap;
+import java.util.*;
+import java.util.stream.Collectors;
 
 //******************************************************************************
 //**  Model Class
@@ -13,7 +14,8 @@ import java.util.HashMap;
 public class Model {
 
     private String name;
-    private java.util.ArrayList<Field> fields;
+    private TreeSet<String> implementations;
+    private ArrayList<Field> fields;
     private static final String template = getTemplate();
     private String tableName;
     private String escapedTableName;
@@ -30,7 +32,8 @@ public class Model {
    */
     protected Model(String modelName, JSONObject modelInfo, String packageName, HashMap<String, String> options){
         this.name = modelName;
-        this.fields = new java.util.ArrayList<Field>();
+        this.implementations = new TreeSet<>();
+        this.fields = new ArrayList<>();
         this.options = options;
         this.packageName = packageName;
         this.tableName = Utils.camelCaseToUnderScore(name).toLowerCase();
@@ -44,6 +47,15 @@ public class Model {
             escapedTableName = tableName.toUpperCase();
             escapedSchemaName = escapeTableName(schemaName);
             escapedTableName = escapedSchemaName + "." + escapedTableName;
+        }
+
+
+      //Get implementation classes
+        JSONArray implementations = modelInfo.get("implements").toJSONArray();
+        if (implementations!=null){
+            for (JSONValue i : implementations){
+                this.implementations.add(i.toString());
+            }
         }
 
 
@@ -180,6 +192,9 @@ public class Model {
         String str = template.replace("${modelName}", name);
         str = str.replace("${package}", packageName);
         str = str.replace("${tableName}", schemaName==null ? tableName : (schemaName + "." + tableName));
+        str = str.replace("${implements}", implementations.isEmpty() ? "" : "\r\n    implements " +
+        implementations.stream().map(Object::toString).collect(Collectors.joining(", ")) + " ");
+
 
         StringBuilder fieldMap = new StringBuilder("\r\n");
         StringBuilder privateFields = new StringBuilder();
@@ -192,7 +207,7 @@ public class Model {
         StringBuilder hasMany = new StringBuilder();
         StringBuilder initArrays = new StringBuilder();
         String getLastModified = "";
-        java.util.TreeSet<String> includes = new java.util.TreeSet<String>();
+        TreeSet<String> includes = new TreeSet<>();
 
 
         for (int i=0; i<fields.size(); i++){
@@ -257,21 +272,31 @@ public class Model {
 
           //Append public get method
             if (!field.isArray()){
-                if (!password){
-                    publicMembers.append("    public ");
-                    publicMembers.append(fieldType);
-                    publicMembers.append(" get");
-                    publicMembers.append(methodName);
-                    publicMembers.append("(){\r\n");
-                    publicMembers.append("        return ");
-                    publicMembers.append(fieldName);
-                    publicMembers.append(";\r\n");
-                    publicMembers.append("    }\r\n\r\n");
+
+                if (password){
+                    publicMembers.append("    /** Returns a BCrypt encrypted password */\r\n");
+                }
+
+                publicMembers.append("    public ");
+                if (password){
+                    publicMembers.append("String");
                 }
                 else{
+                    publicMembers.append(fieldType);
+                }
+                publicMembers.append(" get");
+                publicMembers.append(methodName);
+                publicMembers.append("(){\r\n");
+                publicMembers.append("        return ");
+                publicMembers.append(fieldName);
+                publicMembers.append(";\r\n");
+                publicMembers.append("    }\r\n\r\n");
 
-                  //Special case for password fields. Instead of a "get" method
-                  //to return the password, we'll add an authenticate method.
+
+              //Add extra method if password
+                if (password){
+
+                  //Add an authenticate method for password fields
                     publicMembers.append("    public boolean authenticate(String ");
                     publicMembers.append(fieldName);
                     publicMembers.append("){\r\n");
@@ -282,6 +307,28 @@ public class Model {
                     publicMembers.append(");\r\n");
                     publicMembers.append("    }\r\n\r\n");
                 }
+
+              //Add extra method if username and implements java.security.Principal
+                if (fieldName.equals("username") && fieldType.equals("String") &&
+                    implementations.contains("java.security.Principal")){
+
+                    boolean addMethod = true;
+                    for (Field f : fields){
+                        if (f.getName().equals("name")){
+                            addMethod = false;
+                            break;
+                        }
+                    }
+
+                    if (addMethod){
+                        publicMembers.append("    public String getName(){\r\n");
+                        publicMembers.append("        return ");
+                        publicMembers.append(fieldName);
+                        publicMembers.append(";\r\n");
+                        publicMembers.append("    }\r\n\r\n");
+                    }
+                }
+
             }
             else{
 
@@ -311,7 +358,21 @@ public class Model {
                     publicMembers.append(" ");
                     publicMembers.append(fieldName);
                     publicMembers.append("){\r\n");
-                    publicMembers.append("        this.");
+
+                    if (password){
+                        publicMembers.append("        if (BCrypt.hasSalt(");
+                        publicMembers.append(fieldName);
+                        publicMembers.append(")) this.");
+                        publicMembers.append(fieldName);
+                        publicMembers.append(" = ");
+                        publicMembers.append(fieldName);
+                        publicMembers.append(";\r\n");
+                        publicMembers.append("        else this.");
+                    }
+                    else{
+                        publicMembers.append("        this.");
+                    }
+
                     publicMembers.append(fieldName);
                     publicMembers.append(" = ");
                     if (password){
@@ -404,7 +465,7 @@ public class Model {
                 String rightTable = Utils.camelCaseToUnderScore(modelName).toLowerCase();
                 String rightColumn = rightTable + "_id";
 
-                //Special case for when a model hasMany of itself
+              //Special case for when a model hasMany of itself
                 if (leftTable.equals(rightTable))  rightColumn = rightTable + "_id2";
 
                 String tableName = leftTable + "_" + rightTable;
@@ -423,14 +484,10 @@ public class Model {
               //Update get models (see database constructor)
                 hasMany.append("\r\n\r\n");
                 hasMany.append("              //Set " + fieldName + "\r\n");
-                hasMany.append("                ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
-                hasMany.append("                for (javaxt.sql.Recordset row : conn.getRecordset(\r\n");
+                hasMany.append("                for (javaxt.sql.Record record : conn.getRecords(\r\n");
                 hasMany.append("                    \"select " + rightColumn + " from " + tableName + " where " + leftColumn + "=\"+id)){\r\n");
-                hasMany.append("                    " + idArray + ".add(row.getValue(0).toLong());\r\n");
+                hasMany.append("                    " + fieldName + ".add(new " + modelName + "(record.get(0).toLong()));\r\n");
                 hasMany.append("                }\r\n");
-                hasMany.append("                for (long " + id + " : " + idArray + "){\r\n");
-                hasMany.append("                    " + fieldName + ".add(new " + modelName + "(" + id + "));\r\n");
-                hasMany.append("                }\r\n\r\n");
 
                 initArrays.append("        " + fieldName + " = new " + fieldType + "();\r\n");
 
@@ -438,24 +495,25 @@ public class Model {
               //Update save models (see save method)
                 saveModels.append("\r\n");
                 saveModels.append("          //Save " + fieldName + "\r\n");
-                saveModels.append("            ArrayList<Long> " + idArray + " = new ArrayList<Long>();\r\n");
-                saveModels.append("            for (" + modelName + " obj : " + fieldName + "){\r\n");
+                saveModels.append("            ArrayList<Long> " + idArray + " = new ArrayList<>();\r\n");
+                saveModels.append("            for (" + modelName + " obj : this." + fieldName + "){\r\n");
                 saveModels.append("                obj.save();\r\n");
                 saveModels.append("                " + idArray + ".add(obj.getID());\r\n");
                 saveModels.append("            }\r\n");
 
 
-                saveModels.append("\r\n");
-                saveModels.append("            conn.execute(\"delete from " + tableName + " where " + leftColumn + "=\" + id);\r\n");
-                saveModels.append("            rs.open(\"select * from " + tableName + " where " + leftColumn + "=\" + id, conn, false);\r\n");
-                saveModels.append("            for (long " + id + " : " + idArray + "){\r\n");
-                saveModels.append("                rs.addNew();\r\n");
-                saveModels.append("                rs.setValue(\"" + leftColumn + "\", id);\r\n");
-                saveModels.append("                rs.setValue(\"" + rightColumn + "\", " + id + ");\r\n");
-                saveModels.append("                rs.update();\r\n");
+                saveModels.append("\r\n\r\n");
+                saveModels.append("          //Link " + fieldName + " to this " + this.name + "\r\n");
+                saveModels.append("            target = \"" + tableName + " where " + leftColumn + "=\" + this.id;\r\n");
+                saveModels.append("            conn.execute(\"delete from \" + target);\r\n");
+                saveModels.append("            try (javaxt.sql.Recordset rs = conn.getRecordset(\"select * from \" + target, false)){\r\n");
+                saveModels.append("                for (long " + id + " : " + idArray + "){\r\n");
+                saveModels.append("                    rs.addNew();\r\n");
+                saveModels.append("                    rs.setValue(\"" + leftColumn + "\", this.id);\r\n");
+                saveModels.append("                    rs.setValue(\"" + rightColumn + "\", " + id + ");\r\n");
+                saveModels.append("                    rs.update();\r\n");
+                saveModels.append("                }\r\n");
                 saveModels.append("            }\r\n");
-                saveModels.append("            rs.close();\r\n");
-                saveModels.append("\r\n");
             }
 
 
@@ -541,15 +599,14 @@ public class Model {
                 getJson.append("        if (json.has(\"");
                 getJson.append(fieldName);
                 getJson.append("\")){\r\n");
-                getJson.append("            JSONArray _");
+                getJson.append("            for (JSONValue _");
                 getJson.append(fieldName);
-                getJson.append(" = json.get(\"");
+                getJson.append(" : json.get(\"");
                 getJson.append(fieldName);
-                getJson.append("\").toJSONArray();\r\n");
-                getJson.append("            for (int i=0; i<_" + fieldName + ".length(); i++){\r\n");
+                getJson.append("\").toJSONArray()){\r\n");
                 getJson.append("                ");
                 getJson.append(fieldName);
-                getJson.append(".add(new " + modelName + "(_" + fieldName + ".get(i).toJSONObject()));\r\n");
+                getJson.append(".add(new " + modelName + "(_" + fieldName + ".toJSONObject()));\r\n");
                 getJson.append("            }\r\n");
                 getJson.append("        }\r\n\r\n");
             }
@@ -574,15 +631,8 @@ public class Model {
       //Update the database constructor with hasMany variables
         if (hasMany.length()>0){
             getValues.append("\r\n\r\n");
-            getValues.append("            javaxt.sql.Connection conn = null;\r\n");
-            getValues.append("            try{\r\n");
-            getValues.append("                conn = getConnection(this.getClass());\r\n");
+            getValues.append("            try (javaxt.sql.Connection conn = getConnection(this.getClass())) {\r\n");
             getValues.append(hasMany);
-            getValues.append("                conn.close();\r\n");
-            getValues.append("            }\r\n");
-            getValues.append("            catch(SQLException e){\r\n");
-            getValues.append("                if (conn!=null) conn.close();\r\n");
-            getValues.append("                throw e;\r\n");
             getValues.append("            }\r\n");
         }
 
@@ -625,18 +675,15 @@ public class Model {
             "  //**************************************************************************\r\n" +
             "  /** Used to save a " + name + " in the database.\r\n" +
             "   */\r\n" +
-            "    public void save() throws SQLException {\r\n" +
-            "        super.save();\r\n" +
-            "        javaxt.sql.Connection conn = null;\r\n" +
-            "        try{\r\n" +
-            "            conn = getConnection(this.getClass());\r\n" +
-            "            javaxt.sql.Recordset rs = new javaxt.sql.Recordset();\r\n" +
-            "            " + saveModels + "\r\n" +
-            "            conn.close();\r\n" +
-            "        }\r\n" +
-            "        catch(SQLException e){\r\n" +
-            "            if (conn!=null) conn.close();\r\n" +
-            "            throw e;\r\n" +
+            "    public void save() throws SQLException {\r\n\r\n" +
+
+            "      //Update record in the " + this.tableName + " table\r\n" +
+            "        super.save();\r\n\r\n\r\n" +
+
+            "      //Save models\r\n" +
+            "        try (javaxt.sql.Connection conn = getConnection(this.getClass())) {\r\n" +
+            "            String target;\r\n" +
+            "            " + saveModels +
             "        }\r\n" +
             "    }\r\n";
 
@@ -711,8 +758,8 @@ public class Model {
 
 
       //Add fields
-        java.util.ArrayList<String> foreignKeys = new java.util.ArrayList<String>();
-        java.util.Iterator<Field> it = fields.iterator();
+        ArrayList<String> foreignKeys = new ArrayList<>();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (field.isArray()) continue;
@@ -775,7 +822,7 @@ public class Model {
    */
     public String getDiamondTableSQL(){
         StringBuilder str = new StringBuilder();
-        java.util.Iterator<Field> it = fields.iterator();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (field.isArray()){
@@ -877,7 +924,7 @@ public class Model {
    */
     public String getForeignKeySQL(){
         StringBuilder str = new StringBuilder();
-        java.util.Iterator<Field> it = fields.iterator();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (!field.isArray()){
@@ -919,7 +966,7 @@ public class Model {
     public String getIndexSQL(){
         StringBuilder str = new StringBuilder();
         String indexPrefix = "IDX_" + tableName.toUpperCase()+ "_";
-        java.util.Iterator<Field> it = fields.iterator();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (!field.isArray()){
@@ -988,7 +1035,7 @@ public class Model {
   /** Returns true if the model contains a lastModified date field.
    */
     protected boolean hasLastModifiedField(){
-        java.util.Iterator<Field> it = fields.iterator();
+        Iterator<Field> it = fields.iterator();
         while (it.hasNext()){
             Field field = it.next();
             if (field.isArray()) continue;
