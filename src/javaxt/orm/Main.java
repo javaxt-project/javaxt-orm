@@ -40,11 +40,25 @@ public class Main {
         String input = args.get("-input");
         String output = args.get("-output");
         if (input==null){
-            input = arguments[0];
+            if (arguments.length>0) input = arguments[0];
             if (arguments.length>1) output = arguments[1];
         }
-        javaxt.io.File inputFile = new javaxt.io.File(input);
-        if (!inputFile.exists()) throw new IllegalArgumentException("Input file not found");
+
+
+      //Get input file
+        javaxt.io.File inputFile;
+        try{
+            if (input==null) throw new IllegalArgumentException("Input file is required");
+            inputFile = new javaxt.io.File(input);
+            if (!inputFile.exists()) throw new IllegalArgumentException("Input file not found");
+        }
+        catch(Exception e){
+            System.out.println(e.getMessage());
+            return;
+        }
+
+
+      //Get output directory
         javaxt.io.Directory outputDirectory = output==null ?
                 inputFile.getDirectory() : new javaxt.io.Directory(output);
 
