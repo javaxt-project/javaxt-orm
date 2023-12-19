@@ -1,5 +1,7 @@
-build/
-dist/
-nbproject/
-build.xml
-manifest.mf
+/build/
+/dist/
+/target/
+/nbproject/
+/build.xml
+/manifest.mf
+
