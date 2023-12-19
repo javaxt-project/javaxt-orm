@@ -61,17 +61,19 @@ public class Model {
 
       //Parse fields
         JSONArray arr = modelInfo.get("fields").toJSONArray();
-        if (arr!=null)
-        for (int i=0; i<arr.length(); i++){
-            JSONObject json = arr.get(i).toJSONObject();
-            Field field = new Field(json.get("name").toString(), json.get("type").toString());
+        if (arr!=null){
+            for (JSONValue f : arr){
+                String name = f.get("name").toString();
+                String type = f.get("type").toString();
 
+              //Don't add ID field. It is added automatically.
+                if (name.equalsIgnoreCase("id")) continue;
 
-          //Don't add ID field. It is added automatically.
-            if (field.getName().equalsIgnoreCase("id")) continue;
-
-
-            fields.add(field);
+              //Create field and update the fields array
+                Field field = new Field(name, type);
+                addConstraints(field, f.toJSONObject());
+                this.fields.add(field);
+            }
         }
 
 
@@ -85,35 +87,17 @@ public class Model {
         }
 
 
-
       //Parse constraints
         JSONArray constraints = modelInfo.get("constraints").toJSONArray();
-        if (constraints!=null)
-        for (int i=0; i<constraints.length(); i++){
-            JSONObject constraint = constraints.get(i).toJSONObject();
-            String fieldName = constraint.get("name").toString();
-            Boolean isRequired = constraint.get("required").toBoolean();
-            if (isRequired==null) isRequired = constraint.get("nullable").toBoolean();
-            Boolean isUnique = constraint.get("unique").toBoolean();
-            Integer length = constraint.get("length").toInteger();
-            if (length==null) length = constraint.get("size").toInteger();
-            Integer srid = constraint.get("srid").toInteger();
+        if (constraints!=null){
+            for (JSONValue constraint : constraints){
+                String fieldName = constraint.get("name").toString();
 
-            for (Field field : fields){
-                if (field.getName().equals(fieldName)){
-                    if (isRequired!=null) field.isRequired(isRequired);
-                    if (isUnique!=null) field.isUnique(isUnique);
-                    if (length!=null) field.setLength(length);
-                    if (srid!=null) field.setSRID(srid);
-
-                    ForeignKey foreignKey = field.getForeignKey();
-                    if (foreignKey!=null){
-                        if (constraint.has("onDelete")){
-                            foreignKey.onDelete(constraint.get("onDelete").toString());
-                        }
+                for (Field field : fields){
+                    if (field.getName().equals(fieldName)){
+                        addConstraints(field, constraint.toJSONObject());
+                        break;
                     }
-
-                    break;
                 }
             }
         }
@@ -121,19 +105,65 @@ public class Model {
 
       //Parse default values
         JSONArray defaultValues = modelInfo.get("defaults").toJSONArray();
-        if (defaultValues!=null)
-        for (int i=0; i<defaultValues.length(); i++){
-            JSONObject json = defaultValues.get(i).toJSONObject();
-            String fieldName = json.get("name").toString();
-            Object val = json.get("value").toObject();
+        if (defaultValues!=null){
+            for (JSONValue d : defaultValues){
+                String fieldName = d.get("name").toString();
 
-            for (Field field : fields){
-                if (field.getName().equals(fieldName)){
-                    field.setDefaultValue(val);
-                    break;
+                for (Field field : fields){
+                    if (field.getName().equals(fieldName)){
+                        field.setDefaultValue(d.get("value").toObject());
+                        break;
+                    }
                 }
             }
         }
+    }
+
+
+  //**************************************************************************
+  //** addConstraints
+  //**************************************************************************
+  /** Used to add constraints to a given field. Constraints can be defined in
+   *  a "constraints" array or inline with the field definition. If both are
+   *  present, the constraints in the "constraints" array may override
+   *  constraints defined inline.
+   */
+    private void addConstraints(Field field, JSONObject constraint){
+
+        Boolean isRequired = constraint.get("required").toBoolean();
+        if (isRequired==null) isRequired = constraint.get("nullable").toBoolean();
+        Boolean isUnique = constraint.get("unique").toBoolean();
+        Integer length = constraint.get("length").toInteger();
+        if (length==null) length = constraint.get("size").toInteger();
+        Integer srid = constraint.get("srid").toInteger();
+
+
+        if (isRequired!=null) field.isRequired(isRequired);
+        if (isUnique!=null) field.isUnique(isUnique);
+        if (length!=null) field.setLength(length);
+        if (srid!=null) field.setSRID(srid);
+
+
+        ForeignKey foreignKey = field.getForeignKey();
+        if (foreignKey!=null){
+            String onDelete = constraint.get("onDelete").toString();
+
+          //Special case for models. Cascade delete by default
+            if (onDelete==null && field.isModel()){
+                onDelete = "cascade";
+            }
+
+            if (onDelete!=null){
+                foreignKey.onDelete(onDelete);
+            }
+        }
+
+
+        if (constraint.has("default")){
+            Object defaultValue = constraint.get("default").toObject();
+            field.setDefaultValue(defaultValue);
+        }
+
     }
 
 
