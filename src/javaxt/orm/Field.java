@@ -30,8 +30,14 @@ public class Field {
         this.name = name;
         this.columnName = Utils.camelCaseToUnderScore(name);
 
+      //Set columnType and tweak type as needed
         if (type.equalsIgnoreCase("int")){
-            type = "integer";
+            type = "Integer";
+            columnType = "integer";
+        }
+        else if (type.equalsIgnoreCase("int[]")){
+            type = "Integer[]";
+            columnType = "integer array";
         }
         else if (type.equalsIgnoreCase("long")){
             columnType = "bigint";
@@ -44,9 +50,13 @@ public class Field {
             type = "BigDecimal";
             columnType = "numeric";
         }
-        else if (type.equalsIgnoreCase("text") || type.equalsIgnoreCase("string")){
-            type = "string";
-            columnType = "text";
+        else if (type.equalsIgnoreCase("text") || type.equalsIgnoreCase("string") || type.equalsIgnoreCase("password")){
+            type = "String";
+            columnType = "varchar"; //varchar without the length specifier and text are equivalent
+        }
+        else if (type.equalsIgnoreCase("text[]") || type.equalsIgnoreCase("string[]")){
+            type = "String[]";
+            columnType = "varchar array"; //same as "text array"
         }
         else if (type.equalsIgnoreCase("char")){
             type = "string";
@@ -74,17 +84,13 @@ public class Field {
             type = "Geometry";
             columnType = "geometry(GeometryZ)";
         }
-        else if (type.equalsIgnoreCase("password")){
-            //type = "String";
-            columnType = "text";
-        }
         else{ //Model?
 
 
             if (type.endsWith("[]")){ //Array of models
 
                 String modelName = type.substring(0, type.length()-2);
-                type = "ArrayList<" + modelName + ">";
+                type = "ArrayList<" + Utils.capitalize(modelName) + ">";
 
             }
             else{ //Single model
