@@ -240,9 +240,34 @@ public class Model {
         TreeSet<String> includes = new TreeSet<>();
 
 
+
+      //Special case for models that implement java.security.Principal
+        boolean hasNameField = false;
+        String getSecurityPrincipalName = "";
+        if (implementations.contains("java.security.Principal")){
+
+          //Check if fields have a name field
+            for (Field field : fields){
+                if (field.getName().equalsIgnoreCase("name")){
+                    hasNameField = true;
+                    break;
+                }
+            }
+
+          //If no name field is found, we'll need to add a public getName()
+            if (!hasNameField){
+                getSecurityPrincipalName += "    public String getName(){\r\n";
+                getSecurityPrincipalName += "        return null;\r\n";
+                getSecurityPrincipalName += "    }\r\n\r\n";
+            }
+        }
+
+
+
+      //Loop through all the fields and generate java code
         for (int i=0; i<fields.size(); i++){
             Field field = fields.get(i);
-            String fieldName = field.getName();
+            String fieldName = Utils.underscoreToCamelCase(field.getName());
             String fieldType = field.getType();
             String methodName = Utils.capitalize(fieldName);
             String columnName = field.getColumnName();
@@ -257,7 +282,7 @@ public class Model {
             if (fieldType.equals("BigDecimal")) includes.add("java.math.BigDecimal");
             if (fieldType.equals("Geometry")){
                 String jts = options.get("jts");
-                if (jts==null) jts = "com.vividsolutions.jts";
+                if (jts==null) jts = "org.locationtech.jts"; //vs "com.vividsolutions.jts";
                 includes.add(jts+".geom.Geometry");
                 includes.add(jts+".io.WKTReader");
             }
@@ -338,25 +363,14 @@ public class Model {
                     publicMembers.append("    }\r\n\r\n");
                 }
 
-              //Add extra method if username and implements java.security.Principal
+
+              //Special case for models that implement java.security.Principal
+              //If there's no name field, use the username as a return value
+              //for the getName() method
                 if (fieldName.equals("username") && fieldType.equals("String") &&
-                    implementations.contains("java.security.Principal")){
-
-                    boolean addMethod = true;
-                    for (Field f : fields){
-                        if (f.getName().equals("name")){
-                            addMethod = false;
-                            break;
-                        }
-                    }
-
-                    if (addMethod){
-                        publicMembers.append("    public String getName(){\r\n");
-                        publicMembers.append("        return ");
-                        publicMembers.append(fieldName);
-                        publicMembers.append(";\r\n");
-                        publicMembers.append("    }\r\n\r\n");
-                    }
+                    implementations.contains("java.security.Principal") &&
+                    !hasNameField){
+                    getSecurityPrincipalName = getSecurityPrincipalName.replace("null", fieldName);
                 }
 
             }
@@ -466,13 +480,33 @@ public class Model {
                         getValues.append("\").toString());}catch(Exception e){}\r\n");
                     }
                     else{
-                        getValues.append("            this.");
-                        getValues.append(fieldName);
-                        getValues.append(" = getValue(rs, \"");
-                        getValues.append(columnName);
-                        getValues.append("\").to");
-                        getValues.append(password ? "String" : fieldType);
-                        getValues.append("();\r\n");
+
+                        if (fieldType.endsWith("[]")){ //e.g. String[]
+                            getValues.append("            {");
+
+                            //Object[] v = (Object[])getValue(rs, "recent_customers").toArray();
+                            getValues.append("Object[] v = (Object[]) getValue(rs, \"");
+                            getValues.append(columnName);
+                            getValues.append("\").toArray();\r\n");
+
+                            //this.recentCustomers = java.util.Arrays.copyOf(v, v.length, String[].class);
+                            getValues.append("            this.");
+                            getValues.append(fieldName);
+                            getValues.append(" = v==null ? null : java.util.Arrays.copyOf(v, v.length, ");
+                            getValues.append(fieldType);
+                            getValues.append(".class);");
+
+                            getValues.append("}\r\n");
+                        }
+                        else{
+                            getValues.append("            this.");
+                            getValues.append(fieldName);
+                            getValues.append(" = getValue(rs, \"");
+                            getValues.append(columnName);
+                            getValues.append("\").to");
+                            getValues.append(password ? "String" : fieldType);
+                            getValues.append("();\r\n");
+                        }
                     }
                 }
                 else{
@@ -571,13 +605,35 @@ public class Model {
                             getJson.append("\").toByteArray();\r\n");
                         }
                         else{
-                            getJson.append("        this.");
-                            getJson.append(fieldName);
-                            getJson.append(" = json.get(\"");
-                            getJson.append(fieldName);
-                            getJson.append("\").to");
-                            getJson.append(fieldType);
-                            getJson.append("();\r\n");
+
+                            if (fieldType.endsWith("[]")){ //e.g. String[]
+                                getJson.append("        {");
+
+                                //Object[] v = json.has("recentCustomers") ? json.get("recentCustomers").toJSONArray().toArray() : null;
+                                getJson.append("Object[] v = json.has(\"");
+                                getJson.append(fieldName);
+                                getJson.append("\") ? json.get(\"");
+                                getJson.append(fieldName);
+                                getJson.append("\").toJSONArray().toArray() : null;\r\n");
+
+                                //this.recentCustomers = java.util.Arrays.copyOf(v, v.length, String[].class);
+                                getJson.append("        this.");
+                                getJson.append(fieldName);
+                                getJson.append(" = v==null ? null : java.util.Arrays.copyOf(v, v.length, ");
+                                getJson.append(fieldType);
+                                getJson.append(".class);");
+
+                                getJson.append("}\r\n");
+                            }
+                            else{
+                                getJson.append("        this.");
+                                getJson.append(fieldName);
+                                getJson.append(" = json.get(\"");
+                                getJson.append(fieldName);
+                                getJson.append("\").to");
+                                getJson.append(fieldType);
+                                getJson.append("();\r\n");
+                            }
                         }
                     }
                     else{
@@ -689,7 +745,7 @@ public class Model {
         str = str.replace("${field[0]}", fields.get(0).getColumnName());
         str = str.replace("${initArrays}", initArrays.toString().trim());
         str = str.replace("${privateFields}", privateFields.toString().trim());
-        str = str.replace("${publicMembers}", publicMembers.toString().trim());
+        str = str.replace("${publicMembers}", (getSecurityPrincipalName + publicMembers.toString()).trim());
         str = str.replace("${getModels}", getModels.toString());
         str = str.replace("${getValues}", getValues.toString());
         str = str.replace("${getJson}", getJson.toString().trim());
