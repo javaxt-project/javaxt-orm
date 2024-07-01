@@ -184,7 +184,8 @@ public class Field {
 
 
     public void setLength(int length){
-        if (columnType.equalsIgnoreCase("text")){
+        if (columnType.equalsIgnoreCase("text") ||
+            columnType.equalsIgnoreCase("varchar")){
             columnType = "VARCHAR(" + length + ")";
             this.length = length;
         }
