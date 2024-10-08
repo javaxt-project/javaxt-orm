@@ -16,6 +16,7 @@ public class Model {
     private String name;
     private TreeSet<String> implementations;
     private ArrayList<Field> fields;
+    private ArrayList<JSONObject> indexes;
     private static final String template = getTemplate();
     private String tableName;
     private String escapedTableName;
@@ -34,6 +35,7 @@ public class Model {
         this.name = modelName;
         this.implementations = new TreeSet<>();
         this.fields = new ArrayList<>();
+        this.indexes = new ArrayList<>();
         this.options = options;
         this.packageName = packageName;
         this.tableName = Utils.camelCaseToUnderScore(name).toLowerCase();
@@ -91,7 +93,8 @@ public class Model {
         JSONArray constraints = modelInfo.get("constraints").toJSONArray();
         if (constraints!=null){
             for (JSONValue constraint : constraints){
-                String fieldName = constraint.get("name").toString();
+                String fieldName = constraint.get("field").toString();
+                if (fieldName==null) fieldName = constraint.get("name").toString();
 
                 for (Field field : fields){
                     if (field.getName().equals(fieldName)){
@@ -99,6 +102,32 @@ public class Model {
                         break;
                     }
                 }
+            }
+        }
+
+
+      //Parse indexes
+        JSONArray indexes = modelInfo.get("indexes").toJSONArray();
+        if (indexes==null) indexes = modelInfo.get("indices").toJSONArray();
+        if (indexes!=null){
+            for (JSONValue index : indexes){
+
+                JSONObject idx;
+                if (index.toObject() instanceof String){
+                    String fieldName = index.toString();
+                    idx = new JSONObject();
+                    idx.set("field", fieldName);
+                }
+                else{
+                    idx = index.toJSONObject();
+                    if (idx!=null){
+                        if (idx.has("fields")){
+                            idx.set("field", idx.remove("fields"));
+                        }
+                    }
+                }
+
+                if (idx!=null) this.indexes.add(idx);
             }
         }
 
@@ -1052,14 +1081,30 @@ public class Model {
     public String getIndexSQL(){
         StringBuilder str = new StringBuilder();
         String indexPrefix = "IDX_" + tableName.toUpperCase()+ "_";
-        Iterator<Field> it = fields.iterator();
-        while (it.hasNext()){
-            Field field = it.next();
+        HashMap<String, String> columnNames = new HashMap<>();
+
+      //Create a hashmap of indexes using field names as keys
+        HashMap<String, JSONObject> indexes = new HashMap<>();
+        for (JSONObject index : this.indexes){
+            String fieldName = index.get("field").toString();
+            indexes.put(fieldName, index);
+        }
+
+
+      //Add indexes to foreign key and geo fields
+        for (Field field : fields){
+
             if (!field.isArray()){
+
                 ForeignKey foreignKey = field.getForeignKey();
                 if (foreignKey!=null){
+
                     String columnName = foreignKey.getColumnName().toUpperCase();
                     String foreignTable = foreignKey.getForeignTable().toUpperCase();
+                    columnNames.put(field.getName(), columnName);
+
+
+                  //Automatically index foreign key fields
                     str.append("CREATE INDEX ");
                     str.append(indexPrefix);
                     str.append(foreignTable);
@@ -1068,9 +1113,15 @@ public class Model {
                     str.append("(");
                     str.append(columnName);
                     str.append(");\r\n");
+
+                    indexes.remove(field.getName());
                 }
                 else{
+
                     String columnName = field.getColumnName().toUpperCase();
+                    columnNames.put(field.getName(), columnName);
+
+                  //Automatically index geospatial fields
                     if (field.getColumnType().startsWith("geo")){
                         str.append("CREATE INDEX ");
                         str.append(indexPrefix);
@@ -1080,6 +1131,8 @@ public class Model {
                         str.append(" USING GIST(");
                         str.append(columnName);
                         str.append(");\r\n");
+
+                        indexes.remove(field.getName());
                     }
                 }
             }
@@ -1087,6 +1140,66 @@ public class Model {
                 //Handled by getDiamondTableSQL()
             }
         }
+
+
+
+      //Add user defined indexes
+        for (String key : indexes.keySet()){
+            JSONObject index = indexes.get(key);
+            String name = index.get("name").toString();
+            String type = index.get("type").toString();
+
+
+            ArrayList<String> columns = new ArrayList<>();
+            if (index.get("field").toObject() instanceof String){
+                String fieldName = index.get("field").toString();
+                String columnName = columnNames.get(fieldName);
+                if (columnName!=null){
+                    columns.add(columnName);
+                }
+            }
+            else{
+                JSONArray arr = index.get("field").toJSONArray();
+                if (arr!=null){
+                    for (JSONValue v : arr){
+                        String fieldName = v.toString();
+                        String columnName = columnNames.get(fieldName);
+                        if (columnName!=null){
+                            columns.add(columnName);
+                        }
+                    }
+                }
+            }
+            if (columns.isEmpty()) continue;
+
+
+
+
+
+            str.append("CREATE ");
+            if (type!=null) str.append(type + " ");
+            str.append("INDEX ");
+            if (name==null){
+                str.append(indexPrefix);
+                for (int i=0; i<columns.size(); i++){
+                    if (i>0) str.append("_");
+                    str.append(columns.get(i));
+                }
+            }
+            else{
+                str.append(name.toUpperCase());
+            }
+
+            str.append(" ON ");
+            str.append(escapedTableName);
+            str.append("(");
+            for (int i=0; i<columns.size(); i++){
+                if (i>0) str.append(", ");
+                str.append(columns.get(i));
+            }
+            str.append(");\r\n");
+        }
+
         return str.toString();
     }
 
