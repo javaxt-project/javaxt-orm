@@ -18,6 +18,7 @@ public class Field {
     private boolean unique = false;
     private Object defaultValue = null;
     private Integer length;
+    private boolean isModel = false;
     private ForeignKey foreignKey;
 
 
@@ -95,6 +96,7 @@ public class Field {
             }
             else{ //Single model
 
+                isModel = true;
                 columnName = columnName + "_id";
                 columnType = "bigint";
 
@@ -142,7 +144,7 @@ public class Field {
     }
 
     public boolean isModel(){
-        return foreignKey!=null;
+        return isModel;
     }
 
     public boolean isArray(){
