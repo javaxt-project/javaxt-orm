@@ -72,7 +72,7 @@ public class Model {
                 if (name.equalsIgnoreCase("id")) continue;
 
               //Create field and update the fields array
-                Field field = new Field(name, type);
+                Field field = new Field(name, type, this);
                 addConstraints(field, f.toJSONObject());
                 this.fields.add(field);
             }
@@ -84,7 +84,7 @@ public class Model {
         if (hasMany!=null)
         for (int i=0; i<hasMany.length(); i++){
             JSONObject json = hasMany.get(i).toJSONObject();
-            Field field = new Field(json.get("name").toString(), json.get("model").toString()+"[]");
+            Field field = new Field(json.get("name").toString(), json.get("model").toString()+"[]", this);
             fields.add(field);
         }
 

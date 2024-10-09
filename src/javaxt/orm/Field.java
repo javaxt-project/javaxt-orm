@@ -26,7 +26,7 @@ public class Field {
   //**************************************************************************
   /** Creates a new instance of this class.
    */
-    protected Field(String name, String type){
+    protected Field(String name, String type, Model model){
         this.name = name;
         this.columnName = Utils.camelCaseToUnderScore(name);
 
@@ -96,8 +96,17 @@ public class Field {
             else{ //Single model
 
                 columnName = columnName + "_id";
-                foreignKey = new ForeignKey(columnName, type);
                 columnType = "bigint";
+
+              //Typically, when we have a model field we want to create a
+              //foreign key to tie the field to the model. The only exception
+              //is if the model field references the parent model - which is
+              //very rare (most models don't have a model field with the same
+              //type).
+                if (!type.equals(model.getName())){
+                    foreignKey = new ForeignKey(columnName, type);
+                }
+
             }
 
         }
