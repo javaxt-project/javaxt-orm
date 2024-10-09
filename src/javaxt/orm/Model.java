@@ -74,6 +74,8 @@ public class Model {
               //Create field and update the fields array
                 Field field = new Field(name, type, this);
                 addConstraints(field, f.toJSONObject());
+                Object defaultValue = f.get("default").toObject();
+                field.setDefaultValue(defaultValue);
                 this.fields.add(field);
             }
         }
@@ -136,7 +138,8 @@ public class Model {
         JSONArray defaultValues = modelInfo.get("defaults").toJSONArray();
         if (defaultValues!=null){
             for (JSONValue d : defaultValues){
-                String fieldName = d.get("name").toString();
+                String fieldName = d.get("field").toString();
+                if (fieldName==null) fieldName = d.get("name").toString();
 
                 for (Field field : fields){
                     if (field.getName().equals(fieldName)){
