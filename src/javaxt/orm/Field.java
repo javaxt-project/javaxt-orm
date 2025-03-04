@@ -32,7 +32,7 @@ public class Field {
         this.columnName = Utils.camelCaseToUnderScore(name);
 
       //Set columnType and tweak type as needed
-        if (type.equalsIgnoreCase("int")){
+        if (type.equalsIgnoreCase("int") || type.equalsIgnoreCase("integer")){
             type = "Integer";
             columnType = "integer";
         }
